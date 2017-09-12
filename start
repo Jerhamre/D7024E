@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#Build image
+docker build -t d7024e .
+
+container_name=d7024e_container
+for i in {0..25}
+do
+	if [[ $(docker ps -aq -f name=$container_name$i) == "" ]]
+	then
+		#Container doesnt exist
+		echo "Creating container $container_name$i"
+		docker run -p $((8000+$i)):8080 --name $container_name$i d7024e &
+	else
+		#Container exist
+		if [[ $(docker ps -aq -f status=exited -f name=$container_name$i) == "" ]]
+		then
+			echo "Container $container_name$i already running"
+		else
+			echo "Starting container $container_name$i"
+			docker start $container_name$i $2>/dev/null &
+		fi
+	fi
+done
+echo "All containers started!"

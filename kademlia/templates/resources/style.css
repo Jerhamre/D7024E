@@ -1,0 +1,11 @@
+body {
+  background-color: #eee;
+}
+input {
+  width: 192px;
+  margin-bottom: 5px;
+}
+textarea {
+  width: 190px;
+  height: 60px;
+}

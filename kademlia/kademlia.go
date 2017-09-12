@@ -1,16 +1,22 @@
-package d7024e
+package kademlia
+
+import (
+	"fmt"
+)
 
 type Kademlia struct {
+	RoutingTable  *RoutingTable
+	Network				*Network
 }
 
 func (kademlia *Kademlia) LookupContact(target *Contact) {
-	// TODO
+	fmt.Println("LookupContact")
 }
 
 func (kademlia *Kademlia) LookupData(hash string) {
-	// TODO
+	fmt.Println("LookupData")
 }
 
 func (kademlia *Kademlia) Store(data []byte) {
-	// TODO
+	fmt.Println("Store")
 }
