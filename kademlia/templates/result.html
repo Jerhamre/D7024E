@@ -1,0 +1,37 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Kademlia</title>
+  <meta name="description" content="Implementation of Kademlia with a file system">
+  <meta name="author" content="Henrik Nilsson Harnert and Anton Jerhamre">
+
+    <link rel="stylesheet" href="resources/style.css">
+
+  <!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+
+  <h3>{{.ResultType}}</h3>
+
+  {{.ResultFilename}}
+
+  <br><br>
+
+  {{if .ResultContent}}
+    {{.ResultContent}}
+  {{end}}
+
+  <br><br>
+
+  <a href="/">Back</a>
+
+
+    <script src="resources/scripts.js"></script>
+</body>
+</html>
