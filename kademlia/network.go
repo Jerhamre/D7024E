@@ -52,7 +52,7 @@ func (network *Network) SendPingMessage(contact *Contact) {
 
   conn, err := net.Dial("tcp", contact.Address)
   if err != nil {
-    println("Dial failed:", err.Error())
+    println("Dial failed: in SendPingMessage", err.Error())
   } else {
     RCP_ID := getRandomID()
     out := packMessage(network, RCP_ID, "SendPingMessage", "")
@@ -70,7 +70,7 @@ func (network *Network) SendPingMessage(contact *Contact) {
 func (network *Network) SendFindContactMessage(contact *Contact, target *Contact, done chan []Contact) {
   conn, err := net.Dial("tcp", contact.Address)
   if err != nil {
-    println("Dial failed:", err.Error())
+    println("Dial failed in SendFindContactMessage:", err.Error())
   } else {
     RCP_ID := getRandomID()
 

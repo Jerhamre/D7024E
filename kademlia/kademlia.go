@@ -1,8 +1,12 @@
 package kademlia
 
+import (
+	"fmt"
+)
+
 type Kademlia struct {
-	RoutingTable 	RoutingTable
-  Network 			Network
+	RoutingTable 	*RoutingTable
+  Network 			*Network
 }
 
 func (kademlia *Kademlia) LookupContact(target *Contact) {
@@ -10,14 +14,13 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 	const alpha = 3
 	const k = 20
 
-	var contacts []Contact
+	//var contacts []Contact
 	var seenIDs []*KademliaID
 
 	done := make(chan []Contact)
-	returned_contacts := make([]Contact, bucketSize)
 
   //pick out alpha (3) nodes from its closest non-empty k-bucket
-	returned_contacts = append(returned_contacts, kademlia.RoutingTable.FindClosestContacts(target.ID, alpha) ...)
+	returned_contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, alpha)
 
 
   // send parallel, async FIND_NODE to the alpha (3) nodes chosen
@@ -27,6 +30,8 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
   for _, contact := range returned_contacts {
 		findNode++
 		seenIDs = append(seenIDs, contact.ID)
+		fmt.Println("ID", contact.Address)
+		fmt.Println("Address", contact.Address)
     go kademlia.Network.SendFindContactMessage(&contact, target, done)
   }
 
@@ -37,7 +42,7 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 	// The lookup terminates when the initiator has queried and gotten responses
 	// from the k closest nodes it has seen.
 
-	for findNode > 0 && findNodeResponses > k{
+	for findNode > 0 && findNodeResponses < k{
 		nodes := <-done
 		findNodeResponses++
 		findNode--
@@ -52,7 +57,7 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 		}
 
 		// resends FIND_NODE to nodes that it has learned from previous RPC
-		for findNode < alpha && findNodeResponses > k{
+		for findNode < alpha && findNodeResponses < k{
 
 			// sends new RPC to the closest contact in the priority queue that has not been seen
 			contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, k)

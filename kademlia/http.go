@@ -5,6 +5,7 @@ import (
 	"html/template"
   "fmt"
   "encoding/json"
+	"log"
 )
 
 type Page struct {
@@ -30,7 +31,10 @@ func HTTPListen(port string, kademlia *Kademlia) {
   http.HandleFunc("/pin", httpPin(kademlia))
   http.HandleFunc("/unpin", httpUnpin(kademlia))
   http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("kademlia/templates/resources"))))
-	http.ListenAndServe(":"+port,nil)
+	err := http.ListenAndServe("localhost:"+port,nil)
+	if err != nil {
+  	log.Fatal("ListenAndServe: ", err)
+	}
 }
 
 func getPage(kademlia *Kademlia) *Page {
