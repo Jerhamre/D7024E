@@ -34,7 +34,7 @@ func Listen(kademlia *Kademlia) {
     // Close the listener when the application closes.
     defer l.Close()
 
-    fmt.Println("Listening on " + kademlia.Network.IP + ":" + kademlia.Network.Port)
+    fmt.Println("Listening Kademlia on:\t\t" + kademlia.Network.IP + ":" + kademlia.Network.Port)
 
     for {
         // Listen for an incoming connection.
@@ -48,7 +48,7 @@ func Listen(kademlia *Kademlia) {
     }
 }
 
-func (network *Network) SendPingMessage(contact *Contact) {
+func (network *Network) SendPingMessage(contact *Contact, done chan *KademliaID) {
 
   conn, err := net.Dial("tcp", contact.Address)
   if err != nil {
@@ -57,13 +57,14 @@ func (network *Network) SendPingMessage(contact *Contact) {
     RCP_ID := getRandomID()
     out := packMessage(network, RCP_ID, "SendPingMessage", "")
 
-    fmt.Println("Client sent:", out)
     // send to socket
     fmt.Fprintf(conn, string(out)+"\n")
     // listen for reply
     message, _ := bufio.NewReader(conn).ReadString('\n')
     in := unpackMessage(message)
-    fmt.Println("Client received:", in)
+
+
+    done <-NewKademliaID(in.Data)
   }
 }
 
@@ -85,16 +86,12 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Contact
     // listen for reply
     message, _ := bufio.NewReader(conn).ReadString('\n')
     in := unpackMessage(message)
-    fmt.Println("Client received:", in)
-
 
     var contacts []Contact
     err = json.Unmarshal([]byte(in.Data), &contacts)
     if err != nil {
       fmt.Println(err)
     }
-
-    //fmt.Println(contacts[0].String())
 
     done <- contacts
   }
@@ -158,7 +155,7 @@ func handleRequest(conn net.Conn, kademlia *Kademlia) {
   switch in.MessageType {
     case "SendPingMessage":
       // Return time of contant that is online
-      data = time.Now().String()
+      data = kademlia.RoutingTable.me.ID.String()
 
     case "SendFindContactMessage":
 
@@ -177,10 +174,10 @@ func handleRequest(conn net.Conn, kademlia *Kademlia) {
       data = string(out)
 
     case "SendFindDataMessage":
-      // Do something
+      // TODO Do something
 
     case "SendStoreMessage":
-      // Do something
+      // TODO Do something
 
   default:
       panic("Not a valid message type")

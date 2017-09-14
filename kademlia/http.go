@@ -30,6 +30,9 @@ func HTTPListen(port string, kademlia *Kademlia) {
   http.HandleFunc("/cat", httpCat(kademlia))
   http.HandleFunc("/pin", httpPin(kademlia))
   http.HandleFunc("/unpin", httpUnpin(kademlia))
+
+	fmt.Println("Listening HTTP server on:\t" + kademlia.Network.IP + ":" + port)
+
   http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("kademlia/templates/resources"))))
 	err := http.ListenAndServe("localhost:"+port,nil)
 	if err != nil {
