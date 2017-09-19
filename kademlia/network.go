@@ -2,12 +2,13 @@ package kademlia
 
 import (
   "fmt"
-  "os"
   "net"
-  "bufio"
   "encoding/json"
   "math/rand"
   "time"
+  "os"
+  "bufio"
+  "strconv"
 )
 
 type Network struct {
@@ -17,76 +18,91 @@ type Network struct {
 
 type Message struct {
   RCP_ID int
-  IP  string
-  Port string
+  KademliaID *KademliaID
+  Address  string
   MessageType string
   Data string
 }
 
-func Listen(kademlia *Kademlia) {
-  // Listen for incoming connections.
-  //kademlia.Network.IP+
-    l, err := net.Listen("tcp", ":"+kademlia.Network.Port)
-    if err != nil {
-        fmt.Println("Error listening:", err.Error())
-        os.Exit(1)
+
+/* A Simple function to verify error */
+func CheckError(err error) {
+    if err  != nil {
+        fmt.Println("Error: " , err)
+        os.Exit(0)
     }
-    // Close the listener when the application closes.
-    defer l.Close()
+}
+func Listen(kademlia *Kademlia) {
+    port, err := strconv.Atoi(kademlia.Network.Port)
+
+    in := make([]byte, 2048)
+    addr := net.UDPAddr{
+        Port: port,
+        IP: net.ParseIP("0.0.0.0"),
+    }
+    conn, err := net.ListenUDP("udp", &addr)
+    if err != nil {
+        fmt.Printf("Some error %v\n", err)
+        return
+    }
 
     fmt.Println("Listening Kademlia on:\t\t" + kademlia.Network.IP + ":" + kademlia.Network.Port)
 
     for {
-        // Listen for an incoming connection.
-        conn, err := l.Accept()
-        if err != nil {
-            fmt.Println("Error accepting: ", err.Error())
-            os.Exit(1)
+        n,remoteaddr,err := conn.ReadFromUDP(in)
+        if err !=  nil {
+            fmt.Printf("Some error  %v", err)
+            continue
         }
-        // Handle connections in a new goroutine.
-        go handleRequest(conn, kademlia)
+        go handleRequest(conn, in[:n], remoteaddr, kademlia)
     }
 }
 
-func (network *Network) SendPingMessage(contact *Contact, done chan *KademliaID) {
 
-  conn, err := net.Dial("tcp", contact.Address)
+func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan *KademliaID) {
+  p :=  make([]byte, 2048)
+  conn, err := net.Dial("udp", contact.Address)
   if err != nil {
-    println("Dial failed: in SendPingMessage", err.Error())
-  } else {
-    RCP_ID := getRandomID()
-    out := packMessage(network, RCP_ID, "SendPingMessage", "")
-
-    // send to socket
-    fmt.Fprintf(conn, string(out)+"\n")
-    // listen for reply
-    message, _ := bufio.NewReader(conn).ReadString('\n')
-    in := unpackMessage(message)
-
-
-    done <-NewKademliaID(in.Data)
+    fmt.Printf("Some error %v", err)
+    return
   }
+
+  RCP_ID := getRandomID()
+  out := packMessage(me, RCP_ID, "SendPingMessage", "")
+
+  fmt.Fprintf(conn, out)
+
+   n, err := bufio.NewReader(conn).Read(p)
+
+  if err == nil {
+    in := unpackMessage(string(p[:n]))
+    done <-NewKademliaID(in.Data)
+  } else {
+    fmt.Printf("Some error %v\n", err)
+  }
+  conn.Close()
 }
 
-func (network *Network) SendFindContactMessage(contact *Contact, target *Contact, done chan []Contact) {
-  conn, err := net.Dial("tcp", contact.Address)
+func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, target *Contact, done chan []Contact) {
+  p :=  make([]byte, 2048)
+  conn, err := net.Dial("udp", contact.Address)
   if err != nil {
-    println("Dial failed in SendFindContactMessage:", err.Error())
-  } else {
-    RCP_ID := getRandomID()
+    fmt.Printf("Some error %v", err)
+    return
+  }
 
-    targetData, err := json.Marshal(target)
-    if err != nil {
-      fmt.Println(err)
-    }
-    out := packMessage(network, RCP_ID, "SendFindContactMessage", string(targetData))
+  RCP_ID := getRandomID()
+  targetData, err := json.Marshal(target)
+  if err != nil {
+    fmt.Println(err)
+  }
+  out := packMessage(me, RCP_ID, "SendFindContactMessage", string(targetData))
 
-    // send to socket
-    fmt.Fprintf(conn, string(out)+"\n")
-    // listen for reply
-    message, _ := bufio.NewReader(conn).ReadString('\n')
-    in := unpackMessage(message)
+  fmt.Fprintf(conn, out)
 
+  n, err := bufio.NewReader(conn).Read(p)
+  if err == nil {
+    in := unpackMessage(string(p[:n]))
     var contacts []Contact
     err = json.Unmarshal([]byte(in.Data), &contacts)
     if err != nil {
@@ -94,14 +110,17 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Contact
     }
 
     done <- contacts
+  } else {
+    fmt.Printf("Some error %v\n", err)
   }
+  conn.Close()
 }
 
-func (network *Network) SendFindDataMessage(hash string) {
+func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filename string, done chan []byte) {
   fmt.Println("SendFindDataMessage")
 }
 
-func (network *Network) SendStoreMessage(data []byte) {
+func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename string, data []byte, done chan bool) {
   fmt.Println("SendStoreMessage")
 }
 
@@ -110,11 +129,11 @@ func getRandomID() int {
     return rand.Int()
 }
 
-func packMessage(network *Network, RCP_ID int, messageType string, data string) string {
+func packMessage(me *Contact, RCP_ID int, messageType string, data string) string {
   message := new(Message)
   message.RCP_ID = RCP_ID
-  message.IP = network.IP
-  message.Port = network.Port
+  message.KademliaID = me.ID
+  message.Address = me.Address
   message.MessageType = messageType
   message.Data = data
   out, err := json.Marshal(message)
@@ -134,36 +153,23 @@ func unpackMessage(message string) Message {
   return raw
 }
 
-func handleRequest(conn net.Conn, kademlia *Kademlia) {
+func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kademlia *Kademlia) {
+  in := unpackMessage(string(buf))
 
-  // Make a buffer to hold incoming data.
-  buf_ := make([]byte, 1024)
-  // Get the length of the incoming data.
-  len, err := conn.Read(buf_)
-  if err != nil {
-    fmt.Println("Error reading:", err.Error())
-  }
-  // Read the incoming connection into the buffer.
-  buf := buf_[:len]
-
-  message := string(buf)
-  in := unpackMessage(message)
-  //fmt.Println("Server received:", in)
-
+  sender := NewContact(in.KademliaID, in.Address)
   data := ""
 
   switch in.MessageType {
     case "SendPingMessage":
-      // Return time of contant that is online
       data = kademlia.RoutingTable.me.ID.String()
-
     case "SendFindContactMessage":
-
       var target Contact //map[string]interface{}
       err := json.Unmarshal([]byte(in.Data), &target)
       if err != nil {
         fmt.Println(err)
       }
+
+      kademlia.Queue.Enqueue(sender)
 
       contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, 20)
 
@@ -191,11 +197,13 @@ func handleRequest(conn net.Conn, kademlia *Kademlia) {
     return
   }
 
-  out := packMessage(kademlia.Network, in.RCP_ID, in.MessageType, data)
+  out := packMessage(&kademlia.RoutingTable.me, in.RCP_ID, in.MessageType, data)
 
   // Send a response back to person contacting us.
-  //fmt.Println("Server sent:", out)
-  conn.Write([]byte(out))
-  // Close the connection when you're done with it.
-  conn.Close()
+  fmt.Println("Server sent:", out)
+
+  _,err := conn.WriteToUDP([]byte(out), remoteaddr)
+  if err != nil {
+      fmt.Printf("Couldn't send response %v", err)
+  }
 }
