@@ -86,11 +86,13 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
 }
 
 func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, target *Contact, done chan []Contact) {
+
+  var errorRes []Contact
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
-    fmt.Printf("Some error %v", err)
-    close(done)
+    fmt.Printf("Some error SFCM 1 %v", err)
+    done<-errorRes
     return
   }
 
@@ -114,7 +116,9 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
     }
   done<-contacts
   } else {
-    fmt.Printf("Some error %v\n", err)
+    fmt.Printf("Some error SFCM 2%v\n", err)
+    done<-errorRes
+    return
   }
   conn.Close()
 }

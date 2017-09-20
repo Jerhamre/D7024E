@@ -16,9 +16,7 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 	const alpha = 3
 	const k = 20
 
-	//var contacts []Contact
-	var seenIDs []*KademliaID
-
+	seen := make(map[string]struct{})
 	done := make(chan []Contact)
 
   //pick out alpha (3) nodes from its closest non-empty k-bucket
@@ -29,10 +27,13 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 	findNode := 0	// amount of current findNode calls
 	findNodeResponses := 0 // recieved responses
 
+	seen[kademlia.RoutingTable.me.ID.String()] = struct{}{}
+	fmt.Println("me.ID",kademlia.RoutingTable.me.ID)
+
   for _, contact := range returned_contacts {
 		findNode++
-		seenIDs = append(seenIDs, contact.ID)
-		fmt.Println("ID", contact.Address)
+		seen[contact.ID.String()] = struct{}{}
+		//fmt.Println("ID", contact.ID)
 		fmt.Println("Address", contact.Address)
     go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, done)
   }
@@ -46,41 +47,52 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 
 	for findNode > 0 && findNodeResponses < k{
 		nodes := <-done
-		findNodeResponses++
-		findNode--
+		if len(nodes)!=0{
+			fmt.Println("nodes return", nodes)
+			findNodeResponses++
+			findNode--
+		} else {
+			fmt.Println("SFCM failed")
+			findNode--
+		}
+
 
 		for _, node := range nodes {
 			// checks if node has already been seen, if so, ignore
-			if !contains(seenIDs, node.ID) {
-				kademlia.RoutingTable.AddContact(node)
+			if _, ok := seen[node.ID.String()]; !ok{
+				kademlia.Queue.Enqueue(node)
+				fmt.Println("enqueue on", node)
 				returned_contacts = append(returned_contacts, node)
-				//seenIDs = append(seenIDs, node.ID)
 			}
 		}
 
 		// resends FIND_NODE to nodes that it has learned from previous RPC
-		for findNode < alpha && findNodeResponses < k{
+		// sends new RPC to the closest contact in the priority queue that has not been seen
+		contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, k)
+		//sort.Sort(returned_contacts)
+		// TODO: find closest contact from returned_contacts NOT the routingTable
+		// CalcDistance to target, Sort
+		//contacts := returned_contacts.Sort()
 
-			// sends new RPC to the closest contact in the priority queue that has not been seen
-			contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, k)
-			// TODO: find closest contact from returned_contacts NOT the routingTable
-			// CalcDistance to target, Sort
-			//contacts := returned_contacts.Sort()
-
-			// creates async FIND_NODE to the first unseen contact in the routingTable
-			for _, contact := range contacts{
-				if !contains(seenIDs, contact.ID){
-					findNode++
-					go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, done)
-					break
-				}
+		// creates async FIND_NODE to the first unseen contact in the routingTable
+		for _, contact := range contacts{
+			if _, ok := seen[contact.ID.String()]; !ok{
+				findNode++
+				fmt.Println("sending new sendFindContactMessage to", contact)
+				seen[contact.ID.String()] = struct{}{}
+				//done := make(chan []Contact)
+				go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, done)
+				break
+			} else {
+				fmt.Println("seen (SFCM already sent to)", contact) // debugging contains
 			}
-
 		}
 
 	}
+	fmt.Println("LookupContact derminated")
 
 }
+
 
 // helper function for finding out if an element exists in a slice
 // from stackoverflow https://stackoverflow.com/questions/10485743/contains-method-for-a-slice
