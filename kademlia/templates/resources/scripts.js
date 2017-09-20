@@ -31,8 +31,8 @@ function send(b) {
 
       switch(b.id) {
         case "store":
-          if(xhr.responseText == "1") {
-            result.innerHTML = "File stored!";
+          if(xhr.responseText != "1") {
+            result.innerHTML = "File stored! Hash of file is:<br>"+ xhr.responseText;
           } else {
             result.innerHTML = "There was a problem storing the file";
           }
@@ -45,14 +45,14 @@ function send(b) {
           }
           break
         case "pin":
-          if(xhr.responseText == "1") {
+          if(xhr.responseText == "true") {
             result.innerHTML = "File pinned!";
           } else {
             result.innerHTML = "There was a problem pinning the file";
           }
           break
         case "unpin":
-          if(xhr.responseText == "1") {
+          if(xhr.responseText == "true") {
             result.innerHTML = "File unpinned!";
           } else {
             result.innerHTML = "There was a problem unpinning the file";

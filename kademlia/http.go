@@ -50,9 +50,6 @@ func getPage(kademlia *Kademlia) *Page {
     i++
   }
 
-  //fmt.Fprintf(w, "Kademlia 2000\n\nThis is me:\n%s\t%s\n\nThere are %v contacts in the routing table:\n%s",
-  //  kademlia.RoutingTable.me.ID.String(), kademlia.RoutingTable.me.Address, i, s)
-
   p := &Page{
     Title: "Kademlia",
     ID: kademlia.RoutingTable.me.ID.String(),
@@ -68,7 +65,6 @@ func indexHandler(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Requ
     p := getPage(kademlia)
     t, _ := template.ParseFiles("kademlia/templates/index.html")
     t.Execute(w, p)
-    //http.ServeFile(w, r, "kademlia/templates/index.html")
 	}
 }
 func httpStore(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
@@ -85,12 +81,10 @@ func httpStore(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request
       filename := jmsg.Filename
       content := jmsg.Content
 
-      fmt.Println(filename)
-      fmt.Println(content)
+			done := make(chan string)
+			go kademlia.Store(filename, []byte(content), done)
 
-      // TODO store file
-
-      fmt.Fprint(w, "1");
+      fmt.Fprint(w, <-done);
     } else {
       fmt.Fprint(w, "0");
     }
@@ -109,11 +103,10 @@ func httpCat(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
       }
       filename := jmsg.Filename
 
-      fmt.Println(filename)
+			done := make(chan []byte)
+			go kademlia.LookupData(filename, done)
 
-      // TODO cat file
-
-      fmt.Fprint(w, "file content");
+      fmt.Fprint(w, string(<-done));
     } else {
       fmt.Fprint(w, "0");
     }
@@ -134,9 +127,10 @@ func httpPin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 
       fmt.Println(filename)
 
-      // TODO pin file
+			done := make(chan bool)
+			go kademlia.Pin(filename, done)
 
-      fmt.Fprint(w, "1");
+      fmt.Fprint(w, <-done);
     } else {
       fmt.Fprint(w, "0");
     }
@@ -157,9 +151,10 @@ func httpUnpin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request
 
       fmt.Println(filename)
 
-      // TODO unpin file
+			done := make(chan bool)
+			go kademlia.Unpin(filename, done)
 
-      fmt.Fprint(w, "1");
+      fmt.Fprint(w, <-done);
     } else {
       fmt.Fprint(w, "0");
     }
