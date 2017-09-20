@@ -65,6 +65,7 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
+    close(done)
     return
   }
 
@@ -89,6 +90,7 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
+    close(done)
     return
   }
 
@@ -122,6 +124,7 @@ func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filen
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
+    close(done)
     return
   }
 
@@ -152,6 +155,7 @@ func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
+    close(done)
     return
   }
 
