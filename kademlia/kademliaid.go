@@ -10,6 +10,16 @@ const IDLength = 20
 
 type KademliaID [IDLength]byte
 
+func NewHashKademliaID(data string) *KademliaID {
+	d := hex.EncodeToString([]byte(data))
+
+	for len(d) < 40 {
+		d = d + "20"
+	}
+
+	return NewKademliaID(d)
+}
+
 func NewKademliaID(data string) *KademliaID {
 	decoded, _ := hex.DecodeString(data)
 

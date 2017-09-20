@@ -9,6 +9,7 @@ import (
   "os"
   "bufio"
   "strconv"
+  "strings"
 )
 
 type Network struct {
@@ -67,7 +68,7 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
     return
   }
 
-  RCP_ID := getRandomID()
+  RCP_ID := getRandomRCPID()
   out := packMessage(me, RCP_ID, "SendPingMessage", "")
 
   fmt.Fprintf(conn, out)
@@ -91,7 +92,7 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
     return
   }
 
-  RCP_ID := getRandomID()
+  RCP_ID := getRandomRCPID()
   targetData, err := json.Marshal(target)
   if err != nil {
     fmt.Println(err)
@@ -105,11 +106,11 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
     in := unpackMessage(string(p[:n]))
     var contacts []Contact
     err = json.Unmarshal([]byte(in.Data), &contacts)
+
     if err != nil {
       fmt.Println(err)
     }
-
-    done <- contacts
+  done<-contacts
   } else {
     fmt.Printf("Some error %v\n", err)
   }
@@ -117,14 +118,60 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
 }
 
 func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filename string, done chan []byte) {
-  fmt.Println("SendFindDataMessage")
+  p :=  make([]byte, 2048)
+  conn, err := net.Dial("udp", contact.Address)
+  if err != nil {
+    fmt.Printf("Some error %v", err)
+    return
+  }
+
+  RCP_ID := getRandomRCPID()
+  out := packMessage(me, RCP_ID, "SendFindDataMessage", filename)
+
+  fmt.Fprintf(conn, out)
+
+  n, err := bufio.NewReader(conn).Read(p)
+  if err == nil {
+    in := unpackMessage(string(p[:n]))
+    done<-[]byte(in.Data)
+    /*var data []byte
+    err = json.Unmarshal([]byte(in.Data), &data)
+    if err != nil {
+      fmt.Println(err)
+    }
+
+    done <- data*/
+  } else {
+    fmt.Printf("Some error %v\n", err)
+  }
+  conn.Close()
 }
 
-func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename string, data []byte, done chan bool) {
-  fmt.Println("SendStoreMessage")
+func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename string, data []byte, done chan string) {
+  p :=  make([]byte, 2048)
+  conn, err := net.Dial("udp", contact.Address)
+  if err != nil {
+    fmt.Printf("Some error %v", err)
+    return
+  }
+
+  RCP_ID := getRandomRCPID()
+  out := packMessage(me, RCP_ID, "SendStoreMessage", strings.Join([]string{filename, string(data)}, ","))
+
+  fmt.Fprintf(conn, out)
+
+  n, err := bufio.NewReader(conn).Read(p)
+
+  if err == nil {
+    in := unpackMessage(string(p[:n]))
+    done <- in.Data
+  } else {
+    fmt.Printf("Some error %v\n", err)
+  }
+  conn.Close()
 }
 
-func getRandomID() int {
+func getRandomRCPID() int {
     rand.Seed(time.Now().UnixNano())
     return rand.Int()
 }
@@ -180,10 +227,22 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
       data = string(out)
 
     case "SendFindDataMessage":
-      // TODO Do something
+      hash := in.Data
+
+      done := make(chan []byte)
+      go kademlia.DFS.Cat(hash, done)
+
+      data = string(<-done)
 
     case "SendStoreMessage":
-      // TODO Do something
+      s := strings.Split(in.Data, ",")
+      filename := s[0]
+      content := s[1]
+
+      done := make(chan string)
+      go kademlia.DFS.Store(filename, []byte(content), done)
+
+      data = <-done
 
   default:
       panic("Not a valid message type")
@@ -200,7 +259,6 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
   out := packMessage(&kademlia.RoutingTable.me, in.RCP_ID, in.MessageType, data)
 
   // Send a response back to person contacting us.
-  fmt.Println("Server sent:", out)
 
   _,err := conn.WriteToUDP([]byte(out), remoteaddr)
   if err != nil {

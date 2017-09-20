@@ -6,7 +6,9 @@ import (
 
 type Kademlia struct {
 	RoutingTable 	*RoutingTable
-  Network 			*Network
+	Network 			*Network
+	Queue 				*Queue
+	DFS						*DFS
 }
 
 func (kademlia *Kademlia) LookupContact(target *Contact) {
@@ -32,7 +34,7 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 		seenIDs = append(seenIDs, contact.ID)
 		fmt.Println("ID", contact.Address)
 		fmt.Println("Address", contact.Address)
-    go kademlia.Network.SendFindContactMessage(&contact, target, done)
+    go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, done)
   }
 
 	// if a round of FIND_NODES fails to return a node any closer than the closest
@@ -69,7 +71,7 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 			for _, contact := range contacts{
 				if !contains(seenIDs, contact.ID){
 					findNode++
-					go kademlia.Network.SendFindContactMessage(&contact, target, done)
+					go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, done)
 					break
 				}
 			}
@@ -93,10 +95,37 @@ func contains(slice []*KademliaID, item *KademliaID) bool {
     return ok
 }
 
-func (kademlia *Kademlia) LookupData(hash string) {
+func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
+	kademliaID := NewHashKademliaID(hash)
+	kademliaID = kademliaID
+
 	// TODO
+
+	done<-[]byte("file content")
 }
 
-func (kademlia *Kademlia) Store(data []byte) {
+func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) {
+	kademliaID := NewHashKademliaID(filename)
+
 	// TODO
+
+	done<-kademliaID.String()
+}
+
+func (kademlia *Kademlia) Pin(filename string, done chan bool) {
+	kademliaID := NewHashKademliaID(filename)
+	kademliaID = kademliaID
+
+	// TODO
+
+	done<-true
+}
+
+func (kademlia *Kademlia) Unpin(filename string, done chan bool) {
+	kademliaID := NewHashKademliaID(filename)
+	kademliaID = kademliaID
+
+	// TODO
+
+	done<-false
 }
