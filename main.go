@@ -48,7 +48,7 @@ func main() {
 
 		contact_port_i,_ := strconv.Atoi(port)
 		contact_port_i -= 8000
-		contact_port_i = 8000+rand.Intn(contact_port_i/2)
+		contact_port_i = 8000+rand.Intn(contact_port_i)
 		contact_port := strconv.Itoa(contact_port_i)
 
 		c := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip+":"+contact_port)

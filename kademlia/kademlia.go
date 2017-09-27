@@ -99,13 +99,15 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 
 	kademliaID := NewHashKademliaID(hash)
 	kademliaID = kademliaID
+	SFDMresponse := make(chan []byte)
 
 	// Find the closest nodes in the cluster
-	// closestNodes := FindClosestInCluster
+	data := NewContact(kademliaID, "localhost:1111")
+	closestNodes := kademlia.FindClosestInCluster(&data)
 
-	//for _, contact := range closestNodes{
-		//go kademlia.Network.SendFindDataMessage(&kademlia.RoutingTable.me, &contact, filename string, done chan []byte)
-	//}
+	for _, contact := range closestNodes{
+		go kademlia.Network.SendFindDataMessage(&kademlia.RoutingTable.me, &contact, hash, SFDMresponse)
+	}
 	// TODO
 
 	done<-[]byte("file content")
@@ -174,34 +176,36 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
 			}
 		}
 	}
-
-
-
-	/*
-	for returned_SCFM < 20 {
-		for active == 3 {
-			contacts<-ch
-			returned_SCFM++
-			active--
-			returned_contacts = append(returned_contacts, contacts ...)
-		}
-
-
-		for _, contact = range returned_contacts && active != 3{
-			active++
-			go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, ch)
-		}
-
-	}
-	*/
 }
 
 func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) {
 	kademliaID := NewHashKademliaID(filename)
+	var fileStored = false
+	SSM := make(chan string, 20)
 
-	// TODO
+	var returnedValue string
+	// Find the closest nodes in the cluster
+	dataContact := NewContact(kademliaID, "data")
+	closestNodes := kademlia.FindClosestInCluster(&dataContact)
 
-	done<-kademliaID.String()
+	for _, c := range closestNodes{
+		go kademlia.Network.SendStoreMessage(&kademlia.RoutingTable.me, &c, filename, data, SSM)
+	}
+	for{
+		response := <-SSM
+		if response != "fail"{
+			// atleast one node has the file
+			fileStored = true
+			returnedValue = response
+			fmt.Println("Store successful")
+			break
+		}
+	}
+	if !fileStored {
+		// file has not been stored on any node
+	}
+
+	done<-returnedValue
 }
 
 func (kademlia *Kademlia) Pin(filename string, done chan bool) {
