@@ -34,7 +34,7 @@ func HTTPListen(port string, kademlia *Kademlia) {
 	fmt.Println("Listening HTTP server on:\t" + kademlia.Network.IP + ":" + port)
 
   http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("kademlia/templates/resources"))))
-	err := http.ListenAndServe("localhost:"+port,nil)
+	err := http.ListenAndServe(":"+port,nil)
 	if err != nil {
   	log.Fatal("ListenAndServe: ", err)
 	}
@@ -63,8 +63,10 @@ func getPage(kademlia *Kademlia) *Page {
 func indexHandler(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 	return func(w http.ResponseWriter, r *http.Request) {
     p := getPage(kademlia)
-    t, _ := template.ParseFiles("kademlia/templates/index.html")
-    t.Execute(w, p)
+    t,err := template.ParseFiles("kademlia/templates/index.html")
+		if err != nil { panic(err) }
+    err = t.Execute(w, p)
+		if err != nil { panic(err) }
 	}
 }
 func httpStore(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){

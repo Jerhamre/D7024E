@@ -41,6 +41,7 @@ func Listen(kademlia *Kademlia) {
         Port: port,
         IP: net.ParseIP("0.0.0.0"),
     }
+    fmt.Println(addr)
     conn, err := net.ListenUDP("udp", &addr)
     if err != nil {
         fmt.Printf("Some error %v\n", err)
@@ -55,19 +56,26 @@ func Listen(kademlia *Kademlia) {
             fmt.Printf("Some error  %v", err)
             continue
         }
+        fmt.Println("handleRequest")
         go handleRequest(conn, in[:n], remoteaddr, kademlia)
     }
 }
 
 
 func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan *KademliaID) {
+  fmt.Println("SendPingMessage")
   p :=  make([]byte, 2048)
+
+  var errorRes *KademliaID
+
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
-    fmt.Printf("Some error %v", err)
-    close(done)
+    fmt.Printf("Some error SPM 1 %v", err)
+    done<-errorRes
     return
   }
+
+  fmt.Println(contact.Address)
 
   RCP_ID := getRandomRCPID()
   out := packMessage(me, RCP_ID, "SendPingMessage", "")
@@ -80,13 +88,15 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
     in := unpackMessage(string(p[:n]))
     done <-NewKademliaID(in.Data)
   } else {
-    fmt.Printf("Some error %v\n", err)
+    fmt.Printf("Some error SPM 2 %v\n", err)
+    done<-errorRes
   }
   conn.Close()
 }
 
 func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, target *Contact, done chan []Contact) {
 
+  fmt.Println("SendFindContactMessage")
   var errorRes []Contact
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
@@ -124,11 +134,12 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
 }
 
 func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filename string, done chan []byte) {
+  fmt.Println("SendFindDataMessage")
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
-    close(done)
+    done <- []byte("fail")
     return
   }
 
@@ -141,25 +152,20 @@ func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filen
   if err == nil {
     in := unpackMessage(string(p[:n]))
     done<-[]byte(in.Data)
-    /*var data []byte
-    err = json.Unmarshal([]byte(in.Data), &data)
-    if err != nil {
-      fmt.Println(err)
-    }
-
-    done <- data*/
   } else {
     fmt.Printf("Some error %v\n", err)
+    done <- []byte("fail")
   }
   conn.Close()
 }
 
 func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename string, data []byte, done chan string) {
+  fmt.Println("SendStoreMessage")
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
-    close(done)
+    done <- "fail"
     return
   }
 
@@ -175,6 +181,7 @@ func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename
     done <- in.Data
   } else {
     fmt.Printf("Some error %v\n", err)
+    done <- "fail"
   }
   conn.Close()
 }
@@ -211,13 +218,17 @@ func unpackMessage(message string) Message {
 func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kademlia *Kademlia) {
   in := unpackMessage(string(buf))
 
+  fmt.Println(string(buf))
+
   sender := NewContact(in.KademliaID, in.Address)
   data := ""
 
   switch in.MessageType {
-    case "SendPingMessage":
+  case "SendPingMessage":
+      fmt.Println("handle SendPingMessage")
       data = kademlia.RoutingTable.me.ID.String()
     case "SendFindContactMessage":
+      fmt.Println("handle SendFindContactMessage")
       var target Contact //map[string]interface{}
       err := json.Unmarshal([]byte(in.Data), &target)
       if err != nil {
@@ -235,6 +246,7 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
       data = string(out)
 
     case "SendFindDataMessage":
+      fmt.Println("handle SendFindDataMessage")
       hash := in.Data
 
       done := make(chan []byte)
@@ -243,6 +255,7 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
       data = string(<-done)
 
     case "SendStoreMessage":
+      fmt.Println("handle SendStoreMessage")
       s := strings.Split(in.Data, ",")
       filename := s[0]
       content := s[1]
@@ -254,6 +267,7 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
 
   default:
       panic("Not a valid message type")
+      fmt.Println(in)
       conn.Close()
       return
   }
@@ -267,6 +281,7 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
   out := packMessage(&kademlia.RoutingTable.me, in.RCP_ID, in.MessageType, data)
 
   // Send a response back to person contacting us.
+  fmt.Println(remoteaddr)
 
   _,err := conn.WriteToUDP([]byte(out), remoteaddr)
   if err != nil {
