@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"d7024e/kademlia"
-	//"github.com/ccding/go-stun/stun"
+	"./kademlia"
+	"github.com/ccding/go-stun/stun"
   "time"
 	"os"
 	"strconv"
