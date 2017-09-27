@@ -1,6 +1,6 @@
 #!/bin/bash
 container_name=d7024e_container
-for i in {0..99}
+for i in {0..500}
 do
 	if [[ $(docker ps -aq -f name=$container_name$i) != "" ]]
         then
@@ -14,3 +14,7 @@ do
 	fi
 done
 echo "All containers removed!"
+
+docker rmi d7024e --force
+
+echo "Image removed!"

@@ -1,25 +1,29 @@
 #!/bin/bash
 
+container_name=d7024e_container
+containers=100
+delay=1
+
 #Build image
+echo "Building docker image"
 docker build -t d7024e .
 
-container_name=d7024e_container
-for i in {0..25}
+if [[ $(docker ps -aq -f status=running -f name=$container_name'0') == "" ]]
+then
+	echo "Starting the first container"
+	docker run -d --rm -p 8000:8000/udp -p 8000:8000 -e PORT=8000 --name $container_name'0' d7024e $2>/dev/null &
+	echo "Sleeping for 3 seconds"
+	sleep 3
+fi
+
+for i in {1..$containers}
 do
-	if [[ $(docker ps -aq -f name=$container_name$i) == "" ]]
-	then
-		#Container doesnt exist
+	if [[ $(docker ps -aq -f status=running -f name=$container_name$i) == "" ]]
+  then
 		echo "Creating container $container_name$i"
-		docker run -p $((8000+$i)):8080 --name $container_name$i d7024e &
-	else
-		#Container exist
-		if [[ $(docker ps -aq -f status=exited -f name=$container_name$i) == "" ]]
-		then
-			echo "Container $container_name$i already running"
-		else
-			echo "Starting container $container_name$i"
-			docker start $container_name$i $2>/dev/null &
-		fi
+		docker run -d --rm -p $((8000+$i)):$((8000+$i))/udp -p $((8000+$i)):$((8000+$i)) -e PORT=$((8000+$i)) --name $container_name$i d7024e $2>/dev/null &
+		sleep $delay
 	fi
+
 done
 echo "All containers started!"
