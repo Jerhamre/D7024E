@@ -135,11 +135,13 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
 
 func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filename string, done chan []byte) {
   fmt.Println("SendFindDataMessage")
+
+  var errorRes []byte
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
-    done <- []byte("fail")
+    done <- errorRes
     return
   }
 
@@ -154,7 +156,7 @@ func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filen
     done<-[]byte(in.Data)
   } else {
     fmt.Printf("Some error %v\n", err)
-    done <- []byte("fail")
+    done <- errorRes
   }
   conn.Close()
 }
