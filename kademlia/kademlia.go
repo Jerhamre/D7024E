@@ -12,6 +12,8 @@ type Kademlia struct {
 }
 
 func (kademlia *Kademlia) LookupContact(target *Contact) {
+	//returned_contacts = kademlia.FindClosestInCluster(target)
+
 
 	const alpha = 3
 	const k = 20
@@ -93,27 +95,105 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 
 }
 
-
-// helper function for finding out if an element exists in a slice
-// from stackoverflow https://stackoverflow.com/questions/10485743/contains-method-for-a-slice
-// modified to take *KademliaID instead of string
-func contains(slice []*KademliaID, item *KademliaID) bool {
-    set := make(map[*KademliaID]struct{}, len(slice))
-    for _, s := range slice {
-        set[s] = struct{}{}
-    }
-
-    _, ok := set[item]
-    return ok
-}
-
 func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
+
 	kademliaID := NewHashKademliaID(hash)
 	kademliaID = kademliaID
 
+	// Find the closest nodes in the cluster
+	// closestNodes := FindClosestInCluster
+
+	//for _, contact := range closestNodes{
+		//go kademlia.Network.SendFindDataMessage(&kademlia.RoutingTable.me, &contact, filename string, done chan []byte)
+	//}
 	// TODO
 
 	done<-[]byte("file content")
+}
+
+func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
+
+	const alpha = 1
+	const k = 20
+	//var returned_SCFM = 0
+	var active = 0
+	//ch := make(chan []Contact, 3)
+	ch := make(chan []Contact)
+	seen := make(map[string]struct{})
+	sent := make(map[string]struct{})
+
+	i := 0
+  goDone := 0
+	seen[kademlia.RoutingTable.me.ID.String()] = struct{}{}
+
+	returned_contacts := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(target.ID, k)}
+	//returned_contacts.contacts = append(returned_contacts.contacts, nodes ...)
+
+	for {
+		for active == alpha || i == k {
+			temp := <-ch
+			fmt.Println("ch return")
+
+			// only add a contact if it has not been added before
+			for _, node := range temp {
+				if _, ok := seen[node.ID.String()]; !ok{
+						returned_contacts.contacts = append(returned_contacts.contacts, node)
+						seen[node.ID.String()] = struct{}{}
+					}
+				}
+			//fmt.Println("contacts", returned_contacts.contacts)
+			//returned_contacts.Sort()
+			//fmt.Printf("ch: %v\n", temp)
+			active--
+			goDone++
+			if goDone == k{
+				fmt.Println("FindClosestInCluster terminated")
+				fmt.Println("returned_contacts",returned_contacts.contacts)
+				return returned_contacts.contacts
+			}
+		}
+
+
+		if i < k {
+
+			for _, contact := range returned_contacts.contacts {
+				if _, ok := sent[contact.ID.String()]; !ok{
+					fmt.Println("sending SFCM to", contact)
+					go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, ch)
+					sent[contact.ID.String()] = struct{}{}
+					active++
+					i++
+					break
+				}
+			}
+			fmt.Println("active",active)
+			if active == 0{
+				fmt.Println("FindClosestInCluster terminated")
+				fmt.Println("returned_contacts",returned_contacts.contacts)
+				return returned_contacts.contacts
+			}
+		}
+	}
+
+
+
+	/*
+	for returned_SCFM < 20 {
+		for active == 3 {
+			contacts<-ch
+			returned_SCFM++
+			active--
+			returned_contacts = append(returned_contacts, contacts ...)
+		}
+
+
+		for _, contact = range returned_contacts && active != 3{
+			active++
+			go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, ch)
+		}
+
+	}
+	*/
 }
 
 func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) {
