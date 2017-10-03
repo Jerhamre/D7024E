@@ -64,27 +64,31 @@ function send(b) {
 
   switch(b.id) {
     case "store":
+      xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.open("POST", "/store", true);
       data = {"Filename": filename, "Content": content}
+      xhr.send(JSON.stringify(data));
       break
     case "cat":
-      xhr.open("GET", "/cat", true);
-      data = {"Filename": filename}
+      xhr.open("GET", "/cat?Filename="+filename, true);
+      xhr.send(null);
       break
     case "pin":
+      xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.open("POST", "/pin", true);
       data = {"Filename": filename}
+      xhr.send(JSON.stringify(data));
       break
     case "unpin":
+      xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.open("POST", "/unpin", true);
       data = {"Filename": filename}
+      xhr.send(JSON.stringify(data));
       break
     default:
       console.log("what button is that even!?");
       return
   }
 
-  xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.send(JSON.stringify(data));
 
 }

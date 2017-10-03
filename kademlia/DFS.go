@@ -12,7 +12,6 @@ import (
 type File struct {
 	filename string
 	content []byte
-	pinned bool
 }
 
 type DFS struct {
@@ -43,6 +42,7 @@ func (dfs *DFS) InitDFS(kademlia Kademlia) {
 
 	fmt.Println("Init DFS")
 
+	os.Mkdir("files/", 0775)
 	os.Mkdir("files/"+dfs.RoutingTable.me.Address+"/", 0775)
 
 	files, err := ioutil.ReadDir("files/"+dfs.RoutingTable.me.Address+"/")
@@ -130,13 +130,24 @@ func (dfs *DFS) StopPurge(filename string) {
 	dfs.PurgeList[filename]<-true
 }
 
-func (dfs *DFS) GetFiles() {
+func (dfs *DFS) GetFiles() []File {
+
+	var retFiles []File
+
+
 	files, err := ioutil.ReadDir("./files/"+dfs.RoutingTable.me.Address+"/")
     if err != nil {
         fmt.Println(err)
     }
 
     for _, f := range files {
-            fmt.Println(f.Name())
+			filename := f.Name()
+			done := make(chan []byte)
+			go dfs.Cat(filename, done)
+			content := <- done
+			retFiles = append(retFiles, File{filename, content})
     }
+		fmt.Println(retFiles)
+
+		return retFiles
 }
