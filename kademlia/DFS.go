@@ -101,7 +101,7 @@ func (dfs *DFS) PurgeFile(filename string) {
 	dfs.PurgeList[filename] = make(chan bool)
 	select {
 		case <-dfs.PurgeList[filename]:
-			fmt.Println("Purge interrupted: "+filename)
+			break
 		case <-time.After(time.Duration(dfs.PurgeTimer) * time.Second):
 
 
@@ -110,12 +110,9 @@ func (dfs *DFS) PurgeFile(filename string) {
 			go dfs.Cat(filename, done)
 			data := <-done
 
-		  fmt.Println("File purged: "+filename)
-			os.Remove("files/"+dfs.RoutingTable.me.Address+"/"+filename)
+		  os.Remove("files/"+dfs.RoutingTable.me.Address+"/"+filename)
 
-			fmt.Println("Republish file")
 			target := NewContact(NewHashKademliaID(filename), "localhost:1111")
-			fmt.Println(target.String())
 			contacts := dfs.Kademlia.FindClosestInCluster(&target)
 
 			for _, c := range contacts {
@@ -131,9 +128,7 @@ func (dfs *DFS) StopPurge(filename string) {
 }
 
 func (dfs *DFS) GetFiles() []File {
-
 	var retFiles []File
-
 
 	files, err := ioutil.ReadDir("./files/"+dfs.RoutingTable.me.Address+"/")
     if err != nil {
@@ -147,7 +142,6 @@ func (dfs *DFS) GetFiles() []File {
 			content := <- done
 			retFiles = append(retFiles, File{filename, string(content)})
     }
-		fmt.Println(retFiles)
 
 		return retFiles
 }

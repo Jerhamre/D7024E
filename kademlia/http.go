@@ -68,7 +68,6 @@ func indexHandler(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Requ
 }
 func httpStore(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 	return func(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("store")
     if r.Method == "POST" {
       decoder := json.NewDecoder(r.Body)
 
@@ -91,11 +90,8 @@ func httpStore(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request
 }
 func httpCat(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 	return func(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("cat")
     if r.Method == "GET" {
       queryValues := r.URL.Query()
-
-			fmt.Println(queryValues)
 
       filename := queryValues.Get("Filename")
 
@@ -110,7 +106,6 @@ func httpCat(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 }
 func httpPin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 	return func(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("pin")
     if r.Method == "POST" {
       decoder := json.NewDecoder(r.Body)
 
@@ -120,8 +115,6 @@ func httpPin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
         fmt.Println(err)
       }
       filename := jmsg.Filename
-
-      fmt.Println(filename)
 
 			done := make(chan bool)
 			go kademlia.Pin(filename, done)
@@ -134,7 +127,6 @@ func httpPin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 }
 func httpUnpin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 	return func(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("unpin")
     if r.Method == "POST" {
       decoder := json.NewDecoder(r.Body)
 
@@ -144,8 +136,6 @@ func httpUnpin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request
         fmt.Println(err)
       }
       filename := jmsg.Filename
-
-      fmt.Println(filename)
 
 			done := make(chan bool)
 			go kademlia.Unpin(filename, done)

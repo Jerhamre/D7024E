@@ -56,14 +56,12 @@ func Listen(kademlia *Kademlia) {
             fmt.Printf("Some error  %v", err)
             continue
         }
-        fmt.Println("handleRequest")
         go handleRequest(conn, in[:n], remoteaddr, kademlia)
     }
 }
 
 
 func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan *KademliaID) {
-  fmt.Println("SendPingMessage")
   p :=  make([]byte, 2048)
 
   var errorRes *KademliaID
@@ -86,7 +84,6 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
   go func(network *Network, me *Contact, contact *Contact, done chan *KademliaID) {
     select {
       case <-stopTimeout:
-        fmt.Println("Cancel timeout for SendPingMessage")
         break
       case <-time.After(2 * time.Second):
         conn.Close()
@@ -111,8 +108,6 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
 }
 
 func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, target *Contact, done chan []Contact) {
-
-  fmt.Println("SendFindContactMessage")
   var errorRes []Contact
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
@@ -135,7 +130,6 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
   go func(network *Network, me *Contact, contact *Contact, target *Contact, done chan []Contact) {
     select {
       case <-stopTimeout:
-        fmt.Println("Cancel timeout for SendFindContactMessage")
         break
       case <-time.After(2 * time.Second):
         conn.Close()
@@ -167,8 +161,6 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
 }
 
 func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filename string, done chan []byte) {
-  fmt.Println("SendFindDataMessage")
-
   var errorRes []byte
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
@@ -187,7 +179,6 @@ func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filen
   go func(network *Network, me *Contact, contact *Contact, filename string, done chan []byte) {
     select {
       case <-stopTimeout:
-        fmt.Println("Cancel timeout for SendFindDataMessage")
         break
       case <-time.After(2 * time.Second):
         conn.Close()
@@ -212,7 +203,6 @@ func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filen
 }
 
 func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename string, data []byte, done chan string) {
-  fmt.Println("SendStoreMessage")
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
@@ -230,7 +220,6 @@ func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename
   go func(network *Network, me *Contact, contact *Contact, filename string, data []byte, done chan string) {
     select {
       case <-stopTimeout:
-        fmt.Println("Cancel timeout for SendStoreMessage")
         break
       case <-time.After(2 * time.Second):
         conn.Close()
@@ -255,8 +244,6 @@ func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename
 }
 
 func (network *Network) SendPinMessage(me *Contact, contact *Contact, filename string, done chan bool) {
-  fmt.Println("SendPinMessage")
-
   var errorRes bool
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
@@ -275,7 +262,6 @@ func (network *Network) SendPinMessage(me *Contact, contact *Contact, filename s
   go func(network *Network, me *Contact, contact *Contact, filename string, done chan bool) {
     select {
       case <-stopTimeout:
-        fmt.Println("Cancel timeout for SendPinMessage")
         break
       case <-time.After(2 * time.Second):
         conn.Close()
@@ -304,8 +290,6 @@ func (network *Network) SendPinMessage(me *Contact, contact *Contact, filename s
 }
 
 func (network *Network) SendUnpinMessage(me *Contact, contact *Contact, filename string, done chan bool) {
-  fmt.Println("SendUnpinMessage")
-
   var errorRes bool
   p :=  make([]byte, 2048)
   conn, err := net.Dial("udp", contact.Address)
@@ -324,7 +308,6 @@ func (network *Network) SendUnpinMessage(me *Contact, contact *Contact, filename
   go func(network *Network, me *Contact, contact *Contact, filename string, done chan bool) {
     select {
       case <-stopTimeout:
-        fmt.Println("Cancel timeout for SendUnpinMessage")
         break
       case <-time.After(2 * time.Second):
         conn.Close()
@@ -388,11 +371,10 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
   data := ""
 
   switch in.MessageType {
-  case "SendPingMessage":
+    case "SendPingMessage":
       fmt.Println("handle SendPingMessage")
       data = kademlia.RoutingTable.me.ID.String()
     case "SendFindContactMessage":
-      fmt.Println("handle SendFindContactMessage")
       var target Contact //map[string]interface{}
       err := json.Unmarshal([]byte(in.Data), &target)
       if err != nil {
@@ -410,7 +392,6 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
       data = string(out)
 
     case "SendFindDataMessage":
-      fmt.Println("handle SendFindDataMessage")
       hash := in.Data
 
       done := make(chan []byte)
@@ -419,7 +400,6 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
       data = string(<-done)
 
     case "SendStoreMessage":
-      fmt.Println("handle SendStoreMessage")
       s := strings.Split(in.Data, ",")
       filename := s[0]
       content := s[1]
@@ -437,7 +417,6 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
 
       data = strconv.FormatBool(<-done)
     case "SendUnpinMessage":
-      fmt.Println("handle SendUnpinMessage")
       hash := in.Data
 
       done := make(chan bool)
