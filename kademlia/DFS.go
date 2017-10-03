@@ -10,8 +10,8 @@ import (
 )
 
 type File struct {
-	filename string
-	content []byte
+	Filename string
+	Content string
 }
 
 type DFS struct {
@@ -145,7 +145,7 @@ func (dfs *DFS) GetFiles() []File {
 			done := make(chan []byte)
 			go dfs.Cat(filename, done)
 			content := <- done
-			retFiles = append(retFiles, File{filename, content})
+			retFiles = append(retFiles, File{filename, string(content)})
     }
 		fmt.Println(retFiles)
 

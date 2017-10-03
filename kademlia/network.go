@@ -382,11 +382,7 @@ func unpackMessage(message string) Message {
 }
 
 func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kademlia *Kademlia) {
-
-
   in := unpackMessage(string(buf))
-
-  fmt.Println(string(buf))
 
   sender := NewContact(in.KademliaID, in.Address)
   data := ""

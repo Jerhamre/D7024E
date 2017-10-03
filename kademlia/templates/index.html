@@ -41,15 +41,13 @@
   <div class="right">
     There are {{ len .Files }} files stored on this node:<br>
     <table>
-      <tr>
-        <td>filename</td>
-        <td>content</td>
-        <td>pinned</td>
-      </tr>
-        <td>filename</td>
-        <td>content</td>
-        <td>pinned</td>
-      </tr>
+
+      {{range .Files}}
+        <tr>
+          <td>{{ .Filename }}</td>
+          <td>{{ .Content }}</td>
+        </tr>
+      {{end}}
     </table>
   </div>
 

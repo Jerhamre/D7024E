@@ -12,9 +12,7 @@ type Page struct {
     Title string
     ID  string
     Address string
-    ContactsCount  int
     Contacts []string
-    FilesCount  int
     Files []File
     ResultType string
     ResultFilename string
@@ -43,23 +41,18 @@ func HTTPListen(port string, kademlia *Kademlia) {
 }
 
 func getPage(kademlia *Kademlia) *Page {
-  s := []string{}
-  i := 0
-
-
-  for _, c := range kademlia.RoutingTable.FindClosestContacts(kademlia.RoutingTable.me.ID, 160) {
-    s = append(s, c.Address + " " + c.ID.String())
-    i++
+  contacts := []string{}
+  for _, c := range kademlia.RoutingTable.FindClosestContacts(kademlia.RoutingTable.me.ID, 200) {
+    contacts = append(contacts, c.Address + " " + c.ID.String())
   }
+
 
   p := &Page{
     Title: "Kademlia",
     ID: kademlia.RoutingTable.me.ID.String(),
     Address: kademlia.RoutingTable.me.Address,
-    ContactsCount: i,
-    Contacts: s,
-    FilesCount: 0,
-    Files: nil,
+    Contacts: contacts,
+    Files: kademlia.DFS.GetFiles(),
   }
   return p
 }
@@ -100,14 +93,11 @@ func httpCat(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 	return func(w http.ResponseWriter, r *http.Request) {
     fmt.Println("cat")
     if r.Method == "GET" {
-      decoder := json.NewDecoder(r.Body)
+      queryValues := r.URL.Query()
 
-      var jmsg Resonse
-      err := decoder.Decode(&jmsg)
-      if err != nil {
-        fmt.Println(err)
-      }
-      filename := jmsg.Filename
+			fmt.Println(queryValues)
+
+      filename := queryValues.Get("Filename")
 
 			done := make(chan []byte)
 			go kademlia.LookupData(filename, done)

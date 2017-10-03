@@ -55,35 +55,6 @@ func main() {
 		queue.Enqueue(c)
 
 		k.LookupContact(&me)
-
-
-		time.Sleep(1*time.Second)
-		if port == "8001" {
-			fmt.Println("Store main.go")
-			store := make(chan string)
-			go dfs.Store("test", []byte("file content"), store)
-			s := <-store
-			fmt.Println(s)
-		}
-
-		/*
-
-		time.Sleep(2*time.Second)
-
-		fmt.Println("Pin main.go")
-		pin := make(chan bool)
-		go dfs.Pin("test", pin)
-		fmt.Println(<-pin)
-
-
-		time.Sleep(4*time.Second)
-
-		fmt.Println("Unpin main.go")
-		unpin := make(chan bool)
-		go dfs.Unpin("test", unpin)
-		fmt.Println(<-unpin)
-
-		*/
 	}
 
 	fmt.Println("Ready for use!")
