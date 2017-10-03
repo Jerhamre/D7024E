@@ -6,8 +6,6 @@ import (
 	//"github.com/ccding/go-stun/stun"
   "time"
 	"os"
-	"strconv"
-	"math/rand"
 )
 
 func main() {
@@ -23,8 +21,6 @@ func main() {
 		ip = "localhost"
 	}
 
-
-
 	kID := kademlia.NewHashKademliaID(ip+":"+port)
 	fmt.Printf("Starting node with id %v\n", kID.String())
 
@@ -33,14 +29,16 @@ func main() {
   me.CalcDistance(kID)
 	rt := kademlia.NewRoutingTable(me)
 
-	dfs := kademlia.NewDFS(rt, 3)
-	dfs.InitDFS()
+	dfs := kademlia.NewDFS(rt, 10)
 
 	network := kademlia.Network{ip, port}
 	queue := kademlia.Queue{make(chan kademlia.Contact), rt}
 	go queue.Run()
 
 	k := kademlia.Kademlia{rt, &network, &queue, &dfs}
+
+	dfs.InitDFS(k)
+
 	// Starting listening
 	go kademlia.HTTPListen(port, &k)
 	go kademlia.Listen(&k)
@@ -48,14 +46,7 @@ func main() {
   time.Sleep(time.Second * 1)
 
 	if port != "8000" {
-
-		contact_port_i,_ := strconv.Atoi(port)
-		contact_port_i -= 8000
-		contact_port_i = 8000+rand.Intn(contact_port_i)
-		contact_port := strconv.Itoa(contact_port_i)
-
-		c := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip+":"+contact_port)
-
+		c := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip+":8000")
 		done := make(chan *kademlia.KademliaID)
 		go k.Network.SendPingMessage(&me, &c, done)
 		id := <- done
@@ -66,21 +57,33 @@ func main() {
 		k.LookupContact(&me)
 
 
-		time.Sleep(3*time.Second)
+		time.Sleep(1*time.Second)
+		if port == "8001" {
+			fmt.Println("Store main.go")
+			store := make(chan string)
+			go dfs.Store("test", []byte("file content"), store)
+			s := <-store
+			fmt.Println(s)
+		}
 
-		fmt.Println("Store main.go")
-		store := make(chan string)
-		go dfs.Store("test", []byte("file content"), store)
-		s := <-store
-		fmt.Println(s)
+		/*
 
 		time.Sleep(2*time.Second)
-		dfs.PurgeList["test"]<-true
 
-		fmt.Println("Cat main.go")
-		cat :=make(chan []byte)
-		go dfs.Cat("test", cat)
-		fmt.Println(string(<-cat))
+		fmt.Println("Pin main.go")
+		pin := make(chan bool)
+		go dfs.Pin("test", pin)
+		fmt.Println(<-pin)
+
+
+		time.Sleep(4*time.Second)
+
+		fmt.Println("Unpin main.go")
+		unpin := make(chan bool)
+		go dfs.Unpin("test", unpin)
+		fmt.Println(<-unpin)
+
+		*/
 	}
 
 	fmt.Println("Ready for use!")
