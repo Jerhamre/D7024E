@@ -64,8 +64,8 @@ function send(b) {
 
   switch(b.id) {
     case "store":
-      xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.open("POST", "/store", true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
       data = {"Filename": filename, "Content": content}
       xhr.send(JSON.stringify(data));
       break
@@ -74,14 +74,14 @@ function send(b) {
       xhr.send(null);
       break
     case "pin":
-      xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.open("POST", "/pin", true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
       data = {"Filename": filename}
       xhr.send(JSON.stringify(data));
       break
     case "unpin":
-      xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.open("POST", "/unpin", true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
       data = {"Filename": filename}
       xhr.send(JSON.stringify(data));
       break
