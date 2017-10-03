@@ -9,29 +9,55 @@ import (
 	"time"
 )
 
+type File struct {
+	filename string
+	content []byte
+	pinned bool
+}
+
 type DFS struct {
 	RoutingTable 	*RoutingTable
 	PurgeTimer 		int
+	Kademlia			Kademlia
 	mux 					sync.Mutex // ← this mutex protects the cache below
 	PurgeList			map[string]chan bool
 }
 
-func NewDFS(RoutingTable 	*RoutingTable, PurgeTimer int) DFS{
- return DFS{
-	 RoutingTable: RoutingTable,
-	 PurgeTimer: PurgeTimer,
-	 PurgeList: make(map[string]chan bool),
- }
-}
 func check(e error) {
-    if e != nil {
-        panic(e)
-    }
+  if e != nil {
+    panic(e)
+  }
+}
+
+func NewDFS(RoutingTable 	*RoutingTable, PurgeTimer int) DFS{
+	return DFS{
+		RoutingTable: RoutingTable,
+		PurgeTimer: PurgeTimer,
+		PurgeList: make(map[string]chan bool),
+	}
+}
+
+func (dfs *DFS) InitDFS(kademlia Kademlia) {
+
+	dfs.Kademlia = kademlia
+
+	fmt.Println("Init DFS")
+
+	os.Mkdir("files/"+dfs.RoutingTable.me.Address+"/", 0775)
+
+	files, err := ioutil.ReadDir("files/"+dfs.RoutingTable.me.Address+"/")
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  for _, f := range files {
+		go dfs.PurgeFile(f.Name())
+  }
 }
 
 func (dfs *DFS) Cat(hash string, done chan []byte) {
 
-	if _, err := os.Stat("/path/to/whatever"); os.IsNotExist(err) {
+	if _, err := os.Stat("files/"+dfs.RoutingTable.me.Address+"/"+hash); os.IsNotExist(err) {
 		done<-[]byte("CatFileDoesntExists")
 		return
 	}
@@ -47,12 +73,12 @@ func (dfs *DFS) Store(filename string, data []byte, done chan string) {
 	// Lock so only one goroutine at a time can write.
 	dfs.mux.Lock()
 
-	d1 := []byte("hello\ngo2\n")
-	err := ioutil.WriteFile("files/"+dfs.RoutingTable.me.Address+"/"+filename, d1, 0644)
+	err := ioutil.WriteFile("files/"+dfs.RoutingTable.me.Address+"/"+filename, data, 0644)
 	if err != nil {
 		fmt.Printf("Store %v\n", err)
 		done<-"StoreError"
 	}
+
 	go dfs.StopPurge(filename)
 	go dfs.PurgeFile(filename)
 
@@ -62,48 +88,55 @@ func (dfs *DFS) Store(filename string, data []byte, done chan string) {
 }
 
 func (dfs *DFS) Pin(hash string, done chan bool) {
-
-    // TODO
-
+		go dfs.StopPurge(hash)
     done<-true
 }
 
 func (dfs *DFS) Unpin(hash string, done chan bool) {
-
-  // TODO
-
+	go dfs.PurgeFile(hash)
   done<-true
-}
-
-func (dfs *DFS) InitDFS() {
-
-	fmt.Println("Init DFS")
-
-	os.Mkdir("files/"+dfs.RoutingTable.me.Address+"/", 0775)
-
-	files, err := ioutil.ReadDir("files/"+dfs.RoutingTable.me.Address+"/")
-    if err != nil {
-        fmt.Println(err)
-    }
-
-    for _, f := range files {
-			go dfs.PurgeFile(f.Name())
-    }
-
 }
 
 func (dfs *DFS) PurgeFile(filename string) {
 	dfs.PurgeList[filename] = make(chan bool)
 	select {
-		case m := <-dfs.PurgeList[filename]:
-			m = m
-			fmt.Println("purge of "+filename+" interrupted")
+		case <-dfs.PurgeList[filename]:
+			fmt.Println("Purge interrupted: "+filename)
 		case <-time.After(time.Duration(dfs.PurgeTimer) * time.Second):
-		  fmt.Println(filename+" purged")
+
+
+			// Get file content before Remove
+			done := make(chan []byte)
+			go dfs.Cat(filename, done)
+			data := <-done
+
+		  fmt.Println("File purged: "+filename)
 			os.Remove("files/"+dfs.RoutingTable.me.Address+"/"+filename)
+
+			fmt.Println("Republish file")
+			target := NewContact(NewHashKademliaID(filename), "localhost:1111")
+			fmt.Println(target.String())
+			contacts := dfs.Kademlia.FindClosestInCluster(&target)
+
+			for _, c := range contacts {
+				doneStore := make(chan string)
+				go dfs.Kademlia.Network.SendStoreMessage(&dfs.Kademlia.RoutingTable.me, &c, filename, data, doneStore)
+				<-doneStore
+			}
 	}
 }
 
 func (dfs *DFS) StopPurge(filename string) {
 	dfs.PurgeList[filename]<-true
+}
+
+func (dfs *DFS) GetFiles() {
+	files, err := ioutil.ReadDir("./files/"+dfs.RoutingTable.me.Address+"/")
+    if err != nil {
+        fmt.Println(err)
+    }
+
+    for _, f := range files {
+            fmt.Println(f.Name())
+    }
 }

@@ -32,10 +32,24 @@
   <div id="result"></div>
   <br>
 
-  There are {{.ContactsCount}} contacts in the routing table:<br>
-  {{range .Contacts}}
-    {{.}}<br>
-  {{end}}
+  <div class="left">
+    There are {{.ContactsCount}} contacts in the routing table:<br>
+    {{range .Contacts}}
+      {{.}}<br>
+    {{end}}
+  </div>
+  <div class="right">
+    There are {{.FilesCount}} files stored on this node:<br>
+    <table>
+      <tr>
+        <td>filename</td>
+        <td>content</td>
+      </tr>
+        <td>filename</td>
+        <td>content</td>
+      </tr>
+    </table>
+  </div>
 
 
   <script src="resources/scripts.js"></script>

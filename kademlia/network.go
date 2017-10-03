@@ -82,7 +82,23 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
 
   fmt.Fprintf(conn, out)
 
-   n, err := bufio.NewReader(conn).Read(p)
+  stopTimeout := make(chan bool)
+  go func(network *Network, me *Contact, contact *Contact, done chan *KademliaID) {
+    select {
+      case <-stopTimeout:
+        fmt.Println("Cancel timeout for SendPingMessage")
+        break
+      case <-time.After(2 * time.Second):
+        conn.Close()
+        fmt.Println("SendPingMessage timed out, recalling again...")
+        network.SendPingMessage(me, contact, done)
+        return
+    }
+  }(network, me, contact, done)
+
+  n, err := bufio.NewReader(conn).Read(p)
+
+  stopTimeout <- true
 
   if err == nil {
     in := unpackMessage(string(p[:n]))
@@ -115,7 +131,24 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
 
   fmt.Fprintf(conn, out)
 
+  stopTimeout := make(chan bool)
+  go func(network *Network, me *Contact, contact *Contact, target *Contact, done chan []Contact) {
+    select {
+      case <-stopTimeout:
+        fmt.Println("Cancel timeout for SendFindContactMessage")
+        break
+      case <-time.After(2 * time.Second):
+        conn.Close()
+        fmt.Println("SendFindContactMessage timed out, recalling again...")
+        network.SendFindContactMessage(me, contact, target, done)
+        return
+    }
+  }(network, me, contact, target, done)
+
   n, err := bufio.NewReader(conn).Read(p)
+
+  stopTimeout <- true
+
   if err == nil {
     in := unpackMessage(string(p[:n]))
     var contacts []Contact
@@ -150,7 +183,24 @@ func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filen
 
   fmt.Fprintf(conn, out)
 
+  stopTimeout := make(chan bool)
+  go func(network *Network, me *Contact, contact *Contact, filename string, done chan []byte) {
+    select {
+      case <-stopTimeout:
+        fmt.Println("Cancel timeout for SendFindDataMessage")
+        break
+      case <-time.After(2 * time.Second):
+        conn.Close()
+        fmt.Println("SendFindDataMessage timed out, recalling again...")
+        network.SendFindDataMessage(me, contact, filename, done)
+        return
+    }
+  }(network, me, contact, filename, done)
+
   n, err := bufio.NewReader(conn).Read(p)
+
+  stopTimeout <- true
+
   if err == nil {
     in := unpackMessage(string(p[:n]))
     done<-[]byte(in.Data)
@@ -176,7 +226,23 @@ func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename
 
   fmt.Fprintf(conn, out)
 
+  stopTimeout := make(chan bool)
+  go func(network *Network, me *Contact, contact *Contact, filename string, data []byte, done chan string) {
+    select {
+      case <-stopTimeout:
+        fmt.Println("Cancel timeout for SendStoreMessage")
+        break
+      case <-time.After(2 * time.Second):
+        conn.Close()
+        fmt.Println("SendStoreMessage timed out, recalling again...")
+        network.SendStoreMessage(me, contact, filename, data, done)
+        return
+    }
+  }(network, me, contact, filename, data, done)
+
   n, err := bufio.NewReader(conn).Read(p)
+
+  stopTimeout <- true
 
   if err == nil {
     in := unpackMessage(string(p[:n]))
@@ -184,6 +250,104 @@ func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename
   } else {
     fmt.Printf("Some error %v\n", err)
     done <- "fail"
+  }
+  conn.Close()
+}
+
+func (network *Network) SendPinMessage(me *Contact, contact *Contact, filename string, done chan bool) {
+  fmt.Println("SendPinMessage")
+
+  var errorRes bool
+  p :=  make([]byte, 2048)
+  conn, err := net.Dial("udp", contact.Address)
+  if err != nil {
+    fmt.Printf("Some error %v", err)
+    done <- errorRes
+    return
+  }
+
+  RCP_ID := getRandomRCPID()
+  out := packMessage(me, RCP_ID, "SendPinMessage", filename)
+
+  fmt.Fprintf(conn, out)
+
+  stopTimeout := make(chan bool)
+  go func(network *Network, me *Contact, contact *Contact, filename string, done chan bool) {
+    select {
+      case <-stopTimeout:
+        fmt.Println("Cancel timeout for SendPinMessage")
+        break
+      case <-time.After(2 * time.Second):
+        conn.Close()
+        fmt.Println("SendPinMessage timed out, recalling again...")
+        network.SendPinMessage(me, contact, filename, done)
+        return
+    }
+  }(network, me, contact, filename, done)
+
+  n, err := bufio.NewReader(conn).Read(p)
+
+  stopTimeout <- true
+
+  if err == nil {
+    in := unpackMessage(string(p[:n]))
+    b, err := strconv.ParseBool(in.Data)
+    if err != nil {
+      panic("Not a bool in SendPinMessage?")
+    }
+    done<-b
+  } else {
+    fmt.Printf("Some error %v\n", err)
+    done <- errorRes
+  }
+  conn.Close()
+}
+
+func (network *Network) SendUnpinMessage(me *Contact, contact *Contact, filename string, done chan bool) {
+  fmt.Println("SendUnpinMessage")
+
+  var errorRes bool
+  p :=  make([]byte, 2048)
+  conn, err := net.Dial("udp", contact.Address)
+  if err != nil {
+    fmt.Printf("Some error %v", err)
+    done <- errorRes
+    return
+  }
+
+  RCP_ID := getRandomRCPID()
+  out := packMessage(me, RCP_ID, "SendUnpinMessage", filename)
+
+  fmt.Fprintf(conn, out)
+
+  stopTimeout := make(chan bool)
+  go func(network *Network, me *Contact, contact *Contact, filename string, done chan bool) {
+    select {
+      case <-stopTimeout:
+        fmt.Println("Cancel timeout for SendUnpinMessage")
+        break
+      case <-time.After(2 * time.Second):
+        conn.Close()
+        fmt.Println("SendUnpinMessage timed out, recalling again...")
+        network.SendUnpinMessage(me, contact, filename, done)
+        return
+    }
+  }(network, me, contact, filename, done)
+
+  n, err := bufio.NewReader(conn).Read(p)
+
+  stopTimeout <- true
+
+  if err == nil {
+    in := unpackMessage(string(p[:n]))
+    b, err := strconv.ParseBool(in.Data)
+    if err != nil {
+      panic("Not a bool in SendUnpinMessage?")
+    }
+    done<-b
+  } else {
+    fmt.Printf("Some error %v\n", err)
+    done <- errorRes
   }
   conn.Close()
 }
@@ -218,6 +382,8 @@ func unpackMessage(message string) Message {
 }
 
 func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kademlia *Kademlia) {
+
+
   in := unpackMessage(string(buf))
 
   fmt.Println(string(buf))
@@ -266,11 +432,25 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
       go kademlia.DFS.Store(filename, []byte(content), done)
 
       data = <-done
+    case "SendPinMessage":
+      fmt.Println("handle SendPinMessage")
+      hash := in.Data
 
-  default:
-      panic("Not a valid message type")
+      done := make(chan bool)
+      go kademlia.DFS.Pin(hash, done)
+
+      data = strconv.FormatBool(<-done)
+    case "SendUnpinMessage":
+      fmt.Println("handle SendUnpinMessage")
+      hash := in.Data
+
+      done := make(chan bool)
+      go kademlia.DFS.Unpin(hash, done)
+
+      data = strconv.FormatBool(<-done)
+    default:
+      fmt.Println("Not a valid message type")
       fmt.Println(in)
-      conn.Close()
       return
   }
 
@@ -283,8 +463,6 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
   out := packMessage(&kademlia.RoutingTable.me, in.RCP_ID, in.MessageType, data)
 
   // Send a response back to person contacting us.
-  fmt.Println(remoteaddr)
-
   _,err := conn.WriteToUDP([]byte(out), remoteaddr)
   if err != nil {
       fmt.Printf("Couldn't send response %v", err)

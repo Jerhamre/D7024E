@@ -14,6 +14,8 @@ type Page struct {
     Address string
     ContactsCount  int
     Contacts []string
+    FilesCount  int
+    Files []File
     ResultType string
     ResultFilename string
     ResultContent string
@@ -56,6 +58,8 @@ func getPage(kademlia *Kademlia) *Page {
     Address: kademlia.RoutingTable.me.Address,
     ContactsCount: i,
     Contacts: s,
+    FilesCount: 0,
+    Files: nil,
   }
   return p
 }
