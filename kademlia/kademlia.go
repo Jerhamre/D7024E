@@ -111,9 +111,7 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
   goDone := 0
 	seen[kademlia.RoutingTable.me.ID.String()] = struct{}{}
 	dataContact := NewContact(kademliaID, "data")
-	fmt.Println("cat on node 1")
 	go kademlia.DFS.Cat(hash, dfsCat)
-	fmt.Println("cat on node 2")
 	stored := <-dfsCat
 	if string(stored) != "CatError" && string(stored) != "CatFileDoesntExists"{
 		// file exists on node, done
@@ -121,10 +119,10 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 		done<-stored
 		return
 	}
-
+	fmt.Println("file not found on local, contacting cluster")
 	returned_contacts := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(kademliaID, k)}
 
-	fmt.Println("lookupData")
+
 	//fmt.Println("Searching in cluster for: ",kademliaID)
 
 	for {
@@ -144,6 +142,7 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 			goDone++
 			if goDone == k{
 				fmt.Println("lookupData terminated, data not found")
+				//done<-"data not found"
 				return
 			}
 		}
@@ -177,6 +176,7 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 			//fmt.Println("active",active)
 			if active == 0{
 				fmt.Println("lookupData terminated, Data not found")
+				//done<-"data not found"
 				return
 			}
 		}
@@ -255,9 +255,8 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 	fmt.Println("Store",filename)
 
 	go kademlia.DFS.Store(filename, data, localStoreDone)
-	<-localStoreDone
+	store := <-localStoreDone
 
-	var returnedValue string
 	// Find the closest nodes in the cluster
 	dataContact := NewContact(kademliaID, "data")
 	closestNodes := kademlia.FindClosestInCluster(&dataContact)
@@ -275,7 +274,7 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 		if response != "fail"{
 			// atleast one node has the file
 			fileStored = true
-			returnedValue = response
+			store = response
 			fmt.Println("Store successful")
 			break
 		}
@@ -283,11 +282,11 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 	}
 	//fmt.Println("file stored:",fileStored)
 	fmt.Println("Stored as: ",kademliaID)
-	if !fileStored {
-		// file has not been stored on any node
+	if fileStored {
+		fmt.Println("only stored locally, all SSM failed")
 	}
-
-	done<-returnedValue
+	fmt.Println("store terminated")
+	done<-store
 }
 
 func (kademlia *Kademlia) Pin(filename string, done chan bool) {
