@@ -34,32 +34,31 @@ func CheckError(err error) {
     }
 }
 func Listen(kademlia *Kademlia) {
-    port, err := strconv.Atoi(kademlia.Network.Port)
+  port, err := strconv.Atoi(kademlia.Network.Port)
 
-    in := make([]byte, 2048)
-    addr := net.UDPAddr{
-        Port: port,
-        IP: net.ParseIP("0.0.0.0"),
-    }
-    fmt.Println(addr)
-    conn, err := net.ListenUDP("udp", &addr)
-    if err != nil {
-        fmt.Printf("Some error %v\n", err)
-        return
-    }
+  in := make([]byte, 2048)
+  addr := net.UDPAddr{
+    Port: port,
+    IP: net.ParseIP("0.0.0.0"),
+  }
 
-    fmt.Println("Listening Kademlia on:\t\t" + kademlia.Network.IP + ":" + kademlia.Network.Port)
+  conn, err := net.ListenUDP("udp", &addr)
+  if err != nil {
+    fmt.Printf("Some error %v\n", err)
+    return
+  }
 
-    for {
-        n,remoteaddr,err := conn.ReadFromUDP(in)
-        if err !=  nil {
-            fmt.Printf("Some error  %v", err)
-            continue
-        }
-        go handleRequest(conn, in[:n], remoteaddr, kademlia)
+  //fmt.Println("Listening Kademlia on:\t\t" + kademlia.Network.IP + ":" + kademlia.Network.Port)
+
+  for {
+    n,remoteaddr,err := conn.ReadFromUDP(in)
+    if err !=  nil {
+      fmt.Printf("Some error  %v", err)
+      continue
     }
+    go handleRequest(conn, in[:n], remoteaddr, kademlia)
+  }
 }
-
 
 func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan *KademliaID) {
   p :=  make([]byte, 2048)
@@ -372,7 +371,6 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
 
   switch in.MessageType {
     case "SendPingMessage":
-      fmt.Println("handle SendPingMessage")
       data = kademlia.RoutingTable.me.ID.String()
     case "SendFindContactMessage":
       var target Contact //map[string]interface{}
@@ -409,7 +407,6 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
 
       data = <-done
     case "SendPinMessage":
-      fmt.Println("handle SendPinMessage")
       hash := in.Data
 
       done := make(chan bool)

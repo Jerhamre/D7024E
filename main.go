@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"./kademlia"
+	"d7024e/kademlia"
 	//"github.com/ccding/go-stun/stun"
   "time"
 	"os"
@@ -29,10 +29,10 @@ func main() {
   me.CalcDistance(kID)
 	rt := kademlia.NewRoutingTable(me)
 
-	dfs := kademlia.NewDFS(rt, 10)
+	dfs := kademlia.NewDFS(rt, 10000)
 
 	network := kademlia.Network{ip, port}
-	queue := kademlia.Queue{make(chan kademlia.Contact), rt}
+	queue := kademlia.Queue{make(chan kademlia.Contact), rt, 10}
 	go queue.Run()
 
 	k := kademlia.Kademlia{rt, &network, &queue, &dfs}
@@ -40,7 +40,7 @@ func main() {
 	dfs.InitDFS(k)
 
 	// Starting listening
-	go kademlia.HTTPListen(port, &k)
+	go kademlia.HTTPListen(port, &k, "kademlia/templates")
 	go kademlia.Listen(&k)
 
   time.Sleep(time.Second * 1)

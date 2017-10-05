@@ -19,22 +19,21 @@ type Page struct {
     ResultContent string
 }
 
-type Resonse struct {
+type Response struct {
   Filename string
   Content string
 }
 
-func HTTPListen(port string, kademlia *Kademlia) {
-  http.HandleFunc("/", indexHandler(kademlia))
+func HTTPListen(port string, kademlia *Kademlia, templatePath string) {
+  http.HandleFunc("/", indexHandler(kademlia, templatePath))
   http.HandleFunc("/store", httpStore(kademlia))
   http.HandleFunc("/cat", httpCat(kademlia))
   http.HandleFunc("/pin", httpPin(kademlia))
   http.HandleFunc("/unpin", httpUnpin(kademlia))
 
-	fmt.Println("Listening HTTP server on:\t" + kademlia.Network.IP + ":" + port)
+  http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir(templatePath+"/resources"))))
 
-  http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("kademlia/templates/resources"))))
-	err := http.ListenAndServe(":"+port,nil)
+	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
   	log.Fatal("ListenAndServe: ", err)
 	}
@@ -57,10 +56,10 @@ func getPage(kademlia *Kademlia) *Page {
   return p
 }
 
-func indexHandler(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
+func indexHandler(kademlia *Kademlia, templatePath string) func ( w http.ResponseWriter, r *http.Request){
 	return func(w http.ResponseWriter, r *http.Request) {
     p := getPage(kademlia)
-    t,err := template.ParseFiles("kademlia/templates/index.html")
+    t,err := template.ParseFiles(templatePath+"/index.html")
 		if err != nil { panic(err) }
     err = t.Execute(w, p)
 		if err != nil { panic(err) }
@@ -71,7 +70,7 @@ func httpStore(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request
     if r.Method == "POST" {
       decoder := json.NewDecoder(r.Body)
 
-      var jmsg Resonse
+      var jmsg Response
       err := decoder.Decode(&jmsg)
       if err != nil {
         fmt.Println(err)
@@ -109,7 +108,7 @@ func httpPin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
     if r.Method == "POST" {
       decoder := json.NewDecoder(r.Body)
 
-      var jmsg Resonse
+      var jmsg Response
       err := decoder.Decode(&jmsg)
       if err != nil {
         fmt.Println(err)
@@ -119,7 +118,7 @@ func httpPin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request){
 			done := make(chan bool)
 			go kademlia.Pin(filename, done)
 
-      fmt.Fprint(w, <-done);
+    	fmt.Fprint(w, <-done);
     } else {
       fmt.Fprint(w, "0");
     }
@@ -130,7 +129,7 @@ func httpUnpin(kademlia *Kademlia) func ( w http.ResponseWriter, r *http.Request
     if r.Method == "POST" {
       decoder := json.NewDecoder(r.Body)
 
-      var jmsg Resonse
+      var jmsg Response
       err := decoder.Decode(&jmsg)
       if err != nil {
         fmt.Println(err)

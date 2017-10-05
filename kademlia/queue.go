@@ -7,6 +7,7 @@ import (
 type Queue struct {
   Waiting       chan Contact
   RoutingTable  *RoutingTable
+  SleepTimer    time.Duration
 }
 
 func (queue *Queue) Run() {
@@ -14,7 +15,7 @@ func (queue *Queue) Run() {
     done := make(chan bool)
     go queue.Execute(done)
     <-done
-    time.Sleep(time.Millisecond * 10)
+    time.Sleep(time.Millisecond * queue.SleepTimer)
   }
 }
 

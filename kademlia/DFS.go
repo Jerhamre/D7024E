@@ -2,16 +2,14 @@ package kademlia
 
 
 import (
-	"fmt"
 	"sync"
-  "io/ioutil"
-	"os"
 	"time"
 )
 
 type File struct {
 	Filename string
-	Content string
+	Data []byte
+	Pinned chan bool
 }
 
 type DFS struct {
@@ -19,7 +17,7 @@ type DFS struct {
 	PurgeTimer 		int
 	Kademlia			Kademlia
 	mux 					sync.Mutex // ← this mutex protects the cache below
-	PurgeList			map[string]chan bool
+	Files 				map[string]File
 }
 
 func check(e error) {
@@ -32,54 +30,24 @@ func NewDFS(RoutingTable 	*RoutingTable, PurgeTimer int) DFS{
 	return DFS{
 		RoutingTable: RoutingTable,
 		PurgeTimer: PurgeTimer,
-		PurgeList: make(map[string]chan bool),
+		Files: make(map[string]File),
 	}
 }
 
 func (dfs *DFS) InitDFS(kademlia Kademlia) {
-
 	dfs.Kademlia = kademlia
-
-	fmt.Println("Init DFS")
-
-	os.Mkdir("files/", 0775)
-	os.Mkdir("files/"+dfs.RoutingTable.me.Address+"/", 0775)
-
-	files, err := ioutil.ReadDir("files/"+dfs.RoutingTable.me.Address+"/")
-  if err != nil {
-    fmt.Println(err)
-  }
-
-  for _, f := range files {
-		go dfs.PurgeFile(f.Name())
-  }
 }
 
-func (dfs *DFS) Cat(hash string, done chan []byte) {
-
-	if _, err := os.Stat("files/"+dfs.RoutingTable.me.Address+"/"+hash); os.IsNotExist(err) {
-		done<-[]byte("CatFileDoesntExists")
-		return
-	}
-	dat, err := ioutil.ReadFile("files/"+dfs.RoutingTable.me.Address+"/"+hash)
-	if err != nil {
-		 fmt.Printf("Cat %v\n", err)
-		 done<-[]byte("CatError")
-	}
-  done<-dat
+func (dfs *DFS) Cat(filename string, done chan []byte) {
+  done<-dfs.Files[filename].Data
 }
 
 func (dfs *DFS) Store(filename string, data []byte, done chan string) {
 	// Lock so only one goroutine at a time can write.
 	dfs.mux.Lock()
 
-	err := ioutil.WriteFile("files/"+dfs.RoutingTable.me.Address+"/"+filename, data, 0644)
-	if err != nil {
-		fmt.Printf("Store %v\n", err)
-		done<-"StoreError"
-	}
+	dfs.Files[filename] = File{filename, data, make(chan bool)}
 
-	go dfs.StopPurge(filename)
 	go dfs.PurgeFile(filename)
 
 	dfs.mux.Unlock()
@@ -87,61 +55,46 @@ func (dfs *DFS) Store(filename string, data []byte, done chan string) {
 	done<-filename
 }
 
-func (dfs *DFS) Pin(hash string, done chan bool) {
-		go dfs.StopPurge(hash)
-    done<-true
+func (dfs *DFS) Pin(filename string, done chan bool) {
+	go dfs.StopPurge(filename)
+  done<-true
 }
 
-func (dfs *DFS) Unpin(hash string, done chan bool) {
-	go dfs.PurgeFile(hash)
+func (dfs *DFS) Unpin(filename string, done chan bool) {
+	go dfs.PurgeFile(filename)
   done<-true
 }
 
 func (dfs *DFS) PurgeFile(filename string) {
-	dfs.PurgeList[filename] = make(chan bool)
 	select {
-		case <-dfs.PurgeList[filename]:
+	case <-dfs.Files[filename].Pinned:
 			break
-		case <-time.After(time.Duration(dfs.PurgeTimer) * time.Second):
+		case <-time.After(time.Duration(dfs.PurgeTimer) * time.Millisecond):
 
+			data := dfs.Files[filename].Data
 
-			// Get file content before Remove
-			done := make(chan []byte)
-			go dfs.Cat(filename, done)
-			data := <-done
-
-		  os.Remove("files/"+dfs.RoutingTable.me.Address+"/"+filename)
+			delete(dfs.Files, filename)
 
 			target := NewContact(NewHashKademliaID(filename), "localhost:1111")
 			contacts := dfs.Kademlia.FindClosestInCluster(&target)
 
 			for _, c := range contacts {
 				doneStore := make(chan string)
-				go dfs.Kademlia.Network.SendStoreMessage(&dfs.Kademlia.RoutingTable.me, &c, filename, data, doneStore)
+				go dfs.Kademlia.Network.SendStoreMessage(&dfs.Kademlia.RoutingTable.me,
+					&c, filename, data, doneStore)
 				<-doneStore
 			}
 	}
 }
 
 func (dfs *DFS) StopPurge(filename string) {
-	dfs.PurgeList[filename]<-true
+	dfs.Files[filename].Pinned <- true
 }
 
 func (dfs *DFS) GetFiles() []File {
-	var retFiles []File
-
-	files, err := ioutil.ReadDir("./files/"+dfs.RoutingTable.me.Address+"/")
-    if err != nil {
-        fmt.Println(err)
-    }
-
-    for _, f := range files {
-			filename := f.Name()
-			done := make(chan []byte)
-			go dfs.Cat(filename, done)
-			content := <- done
-			retFiles = append(retFiles, File{filename, string(content)})
-    }
-
-		return retFiles
+	var r []File
+	for _,f := range dfs.Files {
+		r = append(r, f)
+	}
+	return r
 }
