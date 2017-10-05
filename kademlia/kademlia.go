@@ -251,20 +251,25 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 	kademliaID := NewHashKademliaID(filename)
 	var fileStored = false
 	SSM := make(chan string, 20)
+	localStoreDone := make(chan string)
 	fmt.Println("Store",filename)
 
+	go kademlia.DFS.Store(filename, data, localStoreDone)
+	<-localStoreDone
 
 	var returnedValue string
 	// Find the closest nodes in the cluster
 	dataContact := NewContact(kademliaID, "data")
 	closestNodes := kademlia.FindClosestInCluster(&dataContact)
+	SSMSent := 0
 
 	for _, c := range closestNodes{
 		go kademlia.Network.SendStoreMessage(&kademlia.RoutingTable.me, &c, filename, data, SSM)
+		SSMSent++
 	}
 	sentSSM := 0
 
-	for sentSSM < 20 {
+	for sentSSM < SSMSent {
 		response := <-SSM
 		sentSSM++
 		if response != "fail"{
@@ -288,34 +293,21 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 func (kademlia *Kademlia) Pin(filename string, done chan bool) {
 	kademliaID := NewHashKademliaID(filename)
 	kademliaID = kademliaID
+	cpin := make(chan bool)
 
-	// TODO
-	/*
-	SPM := make(chan string, 20)
+	go kademlia.DFS.Pin(filename, cpin)
+	response := <-cpin
 
-
-	var returnedValue string
-	// Find the closest nodes in the cluster
-	dataContact := NewContact(kademliaID, "data")
-	closestNodes := kademlia.FindClosestInCluster(&dataContact)
-	*/
-
-	done<-true
+	done<-response
 }
 
 func (kademlia *Kademlia) Unpin(filename string, done chan bool) {
 	kademliaID := NewHashKademliaID(filename)
 	kademliaID = kademliaID
+	cunpin := make(chan bool)
 
-	// TODO
-	/*
-	SUPM := make(chan string, 20)
+	go kademlia.DFS.Unpin(filename, cunpin)
+	response := <-cunpin
 
-
-	var returnedValue string
-	// Find the closest nodes in the cluster
-	dataContact := NewContact(kademliaID, "data")
-	closestNodes := kademlia.FindClosestInCluster(&dataContact)
-	*/
-	done<-false
+	done<-response
 }
