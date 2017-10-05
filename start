@@ -15,7 +15,7 @@ then
 	sleep 3
 fi
 
-for i in {1..40}
+for i in {1..10}
 do
 	if [[ $(docker ps -aq -f status=running -f name=$container_name$i) == "" ]]
   then

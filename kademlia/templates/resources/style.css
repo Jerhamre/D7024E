@@ -9,7 +9,6 @@ textarea {
   width: 190px;
   height: 60px;
 }
-
 .left {
   float: left;
   width: 50%;
@@ -17,4 +16,7 @@ textarea {
 .right {
   float: right;
   width: 50%;
+}
+.right table tr th {
+  text-align: left;
 }

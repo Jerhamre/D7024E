@@ -4,12 +4,19 @@ package kademlia
 import (
 	"sync"
 	"time"
+	"fmt"
 )
 
 type File struct {
 	Filename string
 	Data []byte
 	Pinned chan bool
+}
+
+type FileString struct {
+	Filename string
+	Data string
+	Pinned bool
 }
 
 type DFS struct {
@@ -91,10 +98,12 @@ func (dfs *DFS) StopPurge(filename string) {
 	dfs.Files[filename].Pinned <- true
 }
 
-func (dfs *DFS) GetFiles() []File {
-	var r []File
+func (dfs *DFS) GetFiles() []FileString {
+	var r []FileString
 	for _,f := range dfs.Files {
-		r = append(r, f)
+		fmt.Println(f.Pinned)
+		f2 := FileString{f.Filename, string(f.Data), true}
+		r = append(r, f2)
 	}
 	return r
 }

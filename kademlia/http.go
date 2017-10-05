@@ -13,7 +13,7 @@ type Page struct {
     ID  string
     Address string
     Contacts []string
-    Files []File
+    Files []FileString
     ResultType string
     ResultFilename string
     ResultContent string
