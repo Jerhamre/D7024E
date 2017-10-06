@@ -64,10 +64,11 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 			// only add a contact if it has not been added before
 			for _, node := range temp {
 				if _, ok := seen[node.ID.String()]; !ok{
-						returned_contacts.contacts = append(returned_contacts.contacts, node)
-						seen[node.ID.String()] = struct{}{}
-					}
+					node.CalcDistance(kademlia.RoutingTable.me.ID)
+					returned_contacts.contacts = append(returned_contacts.contacts, node)
+					seen[node.ID.String()] = struct{}{}
 				}
+			}
 
 			active--
 			goDone++
@@ -78,6 +79,7 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 			}
 		}
 
+		returned_contacts.Sort()
 
 		if i < k {
 
@@ -147,7 +149,9 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
 			// only add a contact if it has not been added before
 			for _, node := range temp {
 				if _, ok := seen[node.ID.String()]; !ok{
+						node.CalcDistance(kademlia.RoutingTable.me.ID)
 						returned_contacts.contacts = append(returned_contacts.contacts, node)
+						fmt.Println("Adding node to returned_contacts: ", node)
 						seen[node.ID.String()] = struct{}{}
 					}
 				}
@@ -160,6 +164,7 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
 				return returned_contacts.contacts
 			}
 		}
+
 		returned_contacts.Sort()
 
 		if i < k {
