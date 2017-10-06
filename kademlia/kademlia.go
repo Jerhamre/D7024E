@@ -27,7 +27,7 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 
 	fmt.Println("LookupData", hash)
 
-	const alpha = 1
+	const alpha = 3
 	const k = 20
 	var active = 0
 	ch := make(chan []Contact)
@@ -54,10 +54,11 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 
 
 	//fmt.Println("Searching in cluster for: ",kademliaID)
-
+	noMoreQueable := false
 	for {
-		for active == alpha || i == k {
+		for active == alpha || i == k || noMoreQueable{
 			temp := <-ch
+			noMoreQueable = false
 			//fmt.Println("ch return")
 
 			// only add a contact if it has not been added before
@@ -101,6 +102,8 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 					active++
 					i++
 					break
+				} else if active < alpha{
+					noMoreQueable = true
 				}
 			}
 			//fmt.Println("active",active)
@@ -116,8 +119,8 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 }
 
 func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
-
-	const alpha = 1
+	fmt.Println("FindClosestInCluster running")
+	const alpha = 3
 	const k = 20
 	//var returned_SCFM = 0
 	var active = 0
@@ -131,11 +134,15 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
 	seen[kademlia.RoutingTable.me.ID.String()] = struct{}{}
 
 	returned_contacts := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(target.ID, k)}
-
+	for _, contact := range returned_contacts.contacts {
+		seen[contact.ID.String()] = struct{}{}
+	}
+	noMoreQueable := false
 	for {
-		for active == alpha || i == k {
+		for active == alpha || i == k || noMoreQueable{
 			temp := <-ch
-			//fmt.Println("ch return")
+			noMoreQueable = false
+			fmt.Println("SFCM returned", temp)
 
 			// only add a contact if it has not been added before
 			for _, node := range temp {
@@ -159,18 +166,18 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
 
 			for _, contact := range returned_contacts.contacts {
 				if _, ok := sent[contact.ID.String()]; !ok{
-					//fmt.Println("sending SFCM to", contact)
+					fmt.Println("sending SFCM to", contact)
 					go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, ch)
 					sent[contact.ID.String()] = struct{}{}
 					active++
 					i++
 					break
+				} else if active < alpha{
+					noMoreQueable = true
 				}
 			}
-			//fmt.Println("active",active)
 			if active == 0{
 				//fmt.Println("FindClosestInCluster terminated")
-				//fmt.Println("returned_contacts",returned_contacts.contacts)
 				return returned_contacts.contacts
 			}
 		}
@@ -191,8 +198,9 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 	dataContact := NewContact(kademliaID, "data")
 	closestNodes := kademlia.FindClosestInCluster(&dataContact)
 	SSMSent := 0
-
+	fmt.Println("closestNodes",closestNodes)
 	for _, c := range closestNodes{
+		fmt.Println("SSM sent to", c.Address)
 		go kademlia.Network.SendStoreMessage(&kademlia.RoutingTable.me, &c, filename, data, SSM)
 		SSMSent++
 	}
@@ -201,18 +209,17 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 	for sentSSM < SSMSent {
 		response := <-SSM
 		sentSSM++
+		fmt.Println(response)
 		if response != "fail"{
 			// atleast one node has the file
 			fileStored = true
 			store = response
-			fmt.Println("Store successful")
+			fmt.Println("Store successful on one node in cluster")
 			break
 		}
 
 	}
-	//fmt.Println("file stored:",fileStored)
-	//fmt.Println("Stored as: ",kademliaID)
-	if fileStored {
+	if !fileStored {
 		fmt.Println("only stored locally, all SSM failed")
 	}
 	fmt.Println("store terminated")
