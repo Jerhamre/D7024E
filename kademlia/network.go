@@ -112,6 +112,7 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
   } else {
     fmt.Printf("Some error SPM 2 %v\n", err)
     done<-errorRes
+    return
   }
   conn.Close()
 }

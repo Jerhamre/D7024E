@@ -17,15 +17,12 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 	for _, contact := range returned_contacts {
 		kademlia.Queue.Enqueue(contact)
 	}
-
 }
 
 func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 	//fmt.Println("hash",hash)
 	kademliaID := NewHashKademliaID(hash)
 	kademliaID = kademliaID
-
-	fmt.Println("LookupData", hash)
 
 	const alpha = 3
 	const k = 20
@@ -51,10 +48,10 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 	}
 	fmt.Println("file not found on local, contacting cluster")
 	var returned_contacts ContactCandidates
-	temp := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(target.ID, k)}
+	temp := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(kademliaID, k)}
 
 	for _, contact := range temp.contacts {
-		contact.CalcDistance(target.ID)
+		contact.CalcDistance(kademliaID)
 		seen[contact.ID.String()] = struct{}{}
 		returned_contacts.contacts = append(returned_contacts.contacts, contact)
 	}

@@ -28,11 +28,12 @@ func main() {
 	dfs := kademlia.NewDFS(rt, 10000)
 
 	network := kademlia.Network{ip, port}
-	queue := kademlia.Queue{make(chan kademlia.Contact, 10000), rt, 10}
-	go queue.Run()
+	queue := kademlia.Queue{make(chan kademlia.Contact, 10000), rt, 10, nil}
 
 	k := kademlia.Kademlia{rt, &network, &queue, &dfs}
 
+
+	go queue.Run(k)
 	dfs.InitDFS(k)
 
 	// Starting listening
@@ -52,16 +53,52 @@ func main() {
 
 	  time.Sleep(time.Second * 1)
 
-		k.LookupContact(&me)
-
 		if port == "8001" {
+			fmt.Println("Store")
 			done2 := make(chan string)
-			dfs.Store("qweqwe", []byte("content DLC"), done2)
+			go dfs.Store("qweqwe", []byte("content DLC"), done2)
 			fmt.Println(<-done2)
+
+			time.Sleep(time.Second * 1)
+
+			fmt.Println("Cat")
+			done3 := make(chan []byte)
+			go k.LookupData("qweqwe", done3)
+			fmt.Println(string(<-done3))
 		}
+
 	}
 
 	fmt.Println("Ready for use!")
+
+
+
+
+	go func ()  {
+		for {
+
+
+			k.LookupContact(&me)
+
+			fmt.Println("Check offline")
+			rt_nodes := rt.FindClosestContacts(me.ID, 10000000)
+
+			for _, node := range rt_nodes {
+				fmt.Println(node)
+				done := make(chan *kademlia.KademliaID)
+				go k.Network.SendPingMessage(&me, &node, done)
+				status := <-done
+
+				if status == nil {
+					bucket := rt.GetBucketForID(node.ID)
+					bucket.Remove(node)
+
+				}
+			}
+
+			time.Sleep(time.Second * 12)
+		}
+	}()
 
 	select {}
 }

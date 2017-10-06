@@ -1,7 +1,7 @@
 #!/bin/bash
 
 container_name=d7024e_container
-delay=0.5
+delay=1
 
 #Build image
 echo "Building docker image"
@@ -15,7 +15,7 @@ then
 	sleep 1
 fi
 
-for i in {1..30}
+for i in {1..60}
 do
 	if [[ $(docker ps -aq -f status=running -f name=$container_name$i) == "" ]]
   then

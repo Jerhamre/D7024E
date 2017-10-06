@@ -31,9 +31,9 @@ func (queue *Queue) Execute(done chan bool) {
   select {
     case c, ok := <- queue.Waiting:
       if ok {
-        fmt.Printf("Execute enqueue %v\n", c.String())
         if c.ID == nil {
           fmt.Println("Contact was nil. Did not add to routing table")
+          fmt.Println(c)
         } else {
           queue.RoutingTable.AddContact(c)
         }
