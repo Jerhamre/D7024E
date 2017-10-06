@@ -12,82 +12,11 @@ type Kademlia struct {
 }
 
 func (kademlia *Kademlia) LookupContact(target *Contact) {
-	const alpha = 3
-	const k = 20
+	returned_contacts := kademlia.FindClosestInCluster(target)
 
-	seen := make(map[string]struct{})
-	done := make(chan []Contact)
-
-  //pick out alpha (3) nodes from its closest non-empty k-bucket
-	returned_contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, alpha)
-	//fmt.Println("returned_contacts from RoutingTable", returned_contacts)
-
-  // send parallel, async FIND_NODE to the alpha (3) nodes chosen
-	findNode := 0	// amount of current findNode calls
-	findNodeResponses := 0 // recieved responses
-
-	seen[kademlia.RoutingTable.me.ID.String()] = struct{}{}
-	//fmt.Println("me.ID",kademlia.RoutingTable.me.ID)
-
-  for _, contact := range returned_contacts {
-		findNode++
-		seen[contact.ID.String()] = struct{}{}
-		//fmt.Println("ID", contact.ID)
-		//fmt.Println("Address", contact.Address)
-    go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, done)
-  }
-
-	// if a round of FIND_NODES fails to return a node any closer than the closest
-	// already seen, the initiator resends the FIND_NODE to all k-closest nodes
-	// it has not already queried
-
-	// The lookup terminates when the initiator has queried and gotten responses
-	// from the k closest nodes it has seen.
-
-	for findNode > 0 && findNodeResponses < k{
-		nodes := <-done
-		if len(nodes)!=0{
-			//fmt.Println("nodes return", nodes)
-			findNodeResponses++
-			findNode--
-		} else {
-			fmt.Println("SFCM failed")
-			findNode--
-		}
-
-
-		for _, node := range nodes {
-			// checks if node has already been seen, if so, ignore
-			if _, ok := seen[node.ID.String()]; !ok{
-				kademlia.Queue.Enqueue(node)
-				//fmt.Println("enqueue on", node)
-				returned_contacts = append(returned_contacts, node)
-			}
-		}
-
-		// resends FIND_NODE to nodes that it has learned from previous RPC
-		// sends new RPC to the closest contact in the priority queue that has not been seen
-		contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, k)
-		//sort.Sort(returned_contacts)
-		// TODO: find closest contact from returned_contacts NOT the routingTable
-		// CalcDistance to target, Sort
-		//contacts := returned_contacts.Sort()
-
-		// creates async FIND_NODE to the first unseen contact in the routingTable
-		for _, contact := range contacts{
-			if _, ok := seen[contact.ID.String()]; !ok{
-				findNode++
-				//fmt.Println("sending new sendFindContactMessage to", contact)
-				seen[contact.ID.String()] = struct{}{}
-				go kademlia.Network.SendFindContactMessage(&kademlia.RoutingTable.me, &contact, target, done)
-				break
-			} else {
-				//fmt.Println("seen (SFCM already sent to)", contact) // debugging contains
-			}
-		}
-
+	for _, contact := range returned_contacts {
+		kademlia.Queue.Enqueue(contact)
 	}
-	fmt.Println("LookupContact derminated")
 
 }
 
@@ -113,7 +42,8 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 	dataContact := NewContact(kademliaID, "data")
 	go kademlia.DFS.Cat(hash, dfsCat)
 	stored := <-dfsCat
-	if string(stored) != "CatError" && string(stored) != "CatFileDoesntExists"{
+	fmt.Println("DFS CAT RETURNED:",string(stored))
+	if string(stored) != "CatError" && string(stored) != "CatFileDoesntExists" && string(stored) != ""{
 		// file exists on node, done
 		fmt.Println("file found on node, terminating lookupData: ", stored)
 		done<-stored
@@ -252,7 +182,7 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 	var fileStored = false
 	SSM := make(chan string, 20)
 	localStoreDone := make(chan string)
-	fmt.Println("Store",filename)
+	fmt.Println("Storing file ",filename)
 
 	go kademlia.DFS.Store(filename, data, localStoreDone)
 	store := <-localStoreDone
@@ -281,7 +211,7 @@ func (kademlia *Kademlia) Store(filename string, data []byte, done chan string) 
 
 	}
 	//fmt.Println("file stored:",fileStored)
-	fmt.Println("Stored as: ",kademliaID)
+	//fmt.Println("Stored as: ",kademliaID)
 	if fileStored {
 		fmt.Println("only stored locally, all SSM failed")
 	}

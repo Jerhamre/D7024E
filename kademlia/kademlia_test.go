@@ -6,20 +6,21 @@ import (
   "time"
 )
 
-func TestLookupContact (t *testing.T){
+func TestKademliaLookupContact (t *testing.T){
+  fmt.Println("-----Test-LookupContact-----")
   ip := "localhost"
 
   // setup node 1
 	port := "8100"
 	kID := NewHashKademliaID(ip+":"+port)
-	fmt.Printf("Starting node with id %v\n", kID.String())
+	//fmt.Printf("Starting node with id %v\n", kID.String())
 	// Create Kademlia struct object
 	me := NewContact(kID, ip+":"+port)
   me.CalcDistance(kID)
 	rt := NewRoutingTable(me)
 	dfs := NewDFS(rt, 10)
 	network := Network{ip, port}
-	queue := Queue{make(chan Contact), rt}
+	queue := Queue{make(chan Contact), rt, 10}
 	go queue.Run()
 	k := Kademlia{rt, &network, &queue, &dfs}
 	dfs.InitDFS(k)
@@ -28,14 +29,14 @@ func TestLookupContact (t *testing.T){
   // Setup node 2
   port2 := "8101"
   kID2 := NewHashKademliaID(ip+":"+port2)
-  fmt.Printf("Starting node with id %v\n", kID.String())
+  //fmt.Printf("Starting node with id %v\n", kID.String())
   // Create Kademlia struct object
 	me2 := NewContact(kID2, ip+":"+port2)
   me2.CalcDistance(kID2)
 	rt2 := NewRoutingTable(me2)
 	dfs2 := NewDFS(rt2, 10)
 	network2 := Network{ip, port2}
-	queue2 := Queue{make(chan Contact), rt2}
+	queue2 := Queue{make(chan Contact), rt2, 10}
 	go queue2.Run()
 	k2 := Kademlia{rt2, &network2, &queue2, &dfs2}
 	dfs2.InitDFS(k2)
@@ -51,22 +52,24 @@ func TestLookupContact (t *testing.T){
 
   // lookup should add node 1 to node 2s routingTable
   k.LookupContact(&me)
+  fmt.Println("LOOKUPCONTACT OK!")
 }
 
-func TestLookupData (t *testing.T){
+func TestKademliaLookupData (t *testing.T){
+  fmt.Println("-----Test-LookupData-----")
   ip := "localhost"
 
   // setup node 1
   port := "8102"
   kID := NewHashKademliaID(ip+":"+port)
-  fmt.Printf("Starting node with id %v\n", kID.String())
+  //fmt.Printf("Starting node with id %v\n", kID.String())
   // Create Kademlia struct object
   me := NewContact(kID, ip+":"+port)
   me.CalcDistance(kID)
   rt := NewRoutingTable(me)
   dfs := NewDFS(rt, 10)
   network := Network{ip, port}
-  queue := Queue{make(chan Contact), rt}
+  queue := Queue{make(chan Contact), rt, 10}
   go queue.Run()
   k := Kademlia{rt, &network, &queue, &dfs}
   dfs.InitDFS(k)
@@ -82,7 +85,7 @@ func TestLookupData (t *testing.T){
   rt2 := NewRoutingTable(me2)
   dfs2 := NewDFS(rt2, 10)
   network2 := Network{ip, port2}
-  queue2 := Queue{make(chan Contact), rt2}
+  queue2 := Queue{make(chan Contact), rt2, 10}
   go queue2.Run()
   k2 := Kademlia{rt2, &network2, &queue2, &dfs2}
   dfs2.InitDFS(k2)
@@ -107,30 +110,32 @@ func TestLookupData (t *testing.T){
   go k.LookupData("memes", doneLookup)
   result := <-doneLookup
   //<-doneLookup
-  fmt.Println("result",result)
-  //if(result == "data not found"){
-    //t.Error("lookup unsuccessful",result)
-  //}
+  //fmt.Println("result",result)
+  if(string(result) != "file content"){
+    t.Fatal("lookup unsuccessful",result)
+  }
+  fmt.Println("LOOKUPDATA OK!")
 }
 
-func TestFindClosestInCluster (t  *testing.T){
+func TestKademliaFindClosestInCluster (t  *testing.T){
   // TODO
 }
 
-func TestStore (t *testing.T){
+func TestKademliaStore (t *testing.T){
+  fmt.Println("-----Test-Store-----")
   ip := "localhost"
 
   // setup node 1
   port := "8104"
   kID := NewHashKademliaID(ip+":"+port)
-  fmt.Printf("Starting node with id %v\n", kID.String())
+  //fmt.Printf("Starting node with id %v\n", kID.String())
   // Create Kademlia struct object
   me := NewContact(kID, ip+":"+port)
   me.CalcDistance(kID)
   rt := NewRoutingTable(me)
   dfs := NewDFS(rt, 10)
   network := Network{ip, port}
-  queue := Queue{make(chan Contact), rt}
+  queue := Queue{make(chan Contact), rt, 10}
   go queue.Run()
   k := Kademlia{rt, &network, &queue, &dfs}
   dfs.InitDFS(k)
@@ -140,20 +145,104 @@ func TestStore (t *testing.T){
   time.Sleep(time.Second * 1)
 
   storeDone := make(chan string)
-  var testData []byte
+  testData := []byte("file content")
   go k.Store("test", testData, storeDone)
   res := <-storeDone
 
   if res != "test" {
     t.Error("store failed")
   }
+  fmt.Println("STORE OK!")
+}
+
+func TestKademliaPin (t *testing.T){
+  fmt.Println("-----Test-Pin-----")
+  ip := "localhost"
+
+  // setup node 1
+  port := "8107"
+  kID := NewHashKademliaID(ip+":"+port)
+  //fmt.Printf("Starting node with id %v\n", kID.String())
+  // Create Kademlia struct object
+  me := NewContact(kID, ip+":"+port)
+  me.CalcDistance(kID)
+  rt := NewRoutingTable(me)
+  dfs := NewDFS(rt, 10)
+  network := Network{ip, port}
+  queue := Queue{make(chan Contact), rt, 10}
+  go queue.Run()
+  k := Kademlia{rt, &network, &queue, &dfs}
+  dfs.InitDFS(k)
+
+  go Listen(&k)
+
+  time.Sleep(time.Second * 1)
+
+  storeDone := make(chan string)
+  testData := []byte("file content")
+  go k.Store("pin", testData, storeDone)
+  res := <-storeDone
+
+  if res != "pin" {
+    t.Fatal("store in TestKademliaPin failed")
+  }
+  pinDone := make(chan bool)
+
+  go k.Pin("pin", pinDone)
+  resPin := <-pinDone
+  if !resPin {
+    t.Fatal("pin failed")
+  }
+  fmt.Println("PIN OK!")
 
 }
 
-func TestPin (t *testing.T){
-  // TODO
-}
+func TestKademliaUnpin (t *testing.T){
+  fmt.Println("-----Test-Unpin-----")
+  ip := "localhost"
 
-func TestUnpin (t *testing.T){
-  // TODO
+  // setup node 1
+  port := "8108"
+  kID := NewHashKademliaID(ip+":"+port)
+  //fmt.Printf("Starting node with id %v\n", kID.String())
+  // Create Kademlia struct object
+  me := NewContact(kID, ip+":"+port)
+  me.CalcDistance(kID)
+  rt := NewRoutingTable(me)
+  dfs := NewDFS(rt, 10)
+  network := Network{ip, port}
+  queue := Queue{make(chan Contact), rt, 10}
+  go queue.Run()
+  k := Kademlia{rt, &network, &queue, &dfs}
+  dfs.InitDFS(k)
+
+  go Listen(&k)
+
+  time.Sleep(time.Second * 1)
+
+  storeDone := make(chan string)
+  testData := []byte("file content")
+  go k.Store("unpin", testData, storeDone)
+  res := <-storeDone
+
+  if res != "unpin" {
+    t.Fatal("store in TestKademliaUnpin failed")
+  }
+  pinDone := make(chan bool)
+
+  go k.Pin("unpin", pinDone)
+  resPin := <-pinDone
+  if !resPin {
+    t.Fatal("pin in TestKademliaUnpin failed")
+  }
+
+  unpinDone := make(chan bool)
+  go k.Unpin("unpin",unpinDone)
+  resUnpin := <- unpinDone
+  if !resUnpin {
+    t.Fatal("unpin failed")
+  }
+
+
+  fmt.Println("UNPIN OK!")
 }
