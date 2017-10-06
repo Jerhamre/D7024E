@@ -265,8 +265,8 @@ func TestGetFiles(t *testing.T) {
     t.Fatalf("Expected filename %v but got %v", filename, files[0].Filename)
   }
 
-  if(!testEq(data, files[0].Data)) {
-    t.Fatalf("Expected file content %v but got %v", string(data), string(files[0].Data))
+  if(string(data) != files[0].Data) {
+    t.Fatalf("Expected file content %v but got %v", string(data), files[0].Data)
   }
 }
 
