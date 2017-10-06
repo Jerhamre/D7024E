@@ -36,7 +36,7 @@ func CheckError(err error) {
 func Listen(kademlia *Kademlia) {
   port, err := strconv.Atoi(kademlia.Network.Port)
 
-  in := make([]byte, 2048)
+  in := make([]byte, 8096)
   addr := net.UDPAddr{
     Port: port,
     IP: net.ParseIP("0.0.0.0"),
@@ -60,10 +60,22 @@ func Listen(kademlia *Kademlia) {
   }
 }
 
-func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan *KademliaID) {
-  p :=  make([]byte, 2048)
+func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan *KademliaID, iteration ... int) {
+  p :=  make([]byte, 8096)
 
   var errorRes *KademliaID
+
+  var iter int
+  if iteration == nil {
+    iter = 0
+  } else {
+    iter = iteration[0]
+  }
+  if(iter >= 5) {
+    fmt.Println("Too many tries in SendPingMessage...")
+    done<-errorRes
+    return
+  }
 
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
@@ -71,8 +83,6 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
     done<-errorRes
     return
   }
-
-  fmt.Println(contact.Address)
 
   RCP_ID := getRandomRCPID()
   out := packMessage(me, RCP_ID, "SendPingMessage", "")
@@ -86,8 +96,8 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
         break
       case <-time.After(2 * time.Second):
         conn.Close()
-        fmt.Println("SendPingMessage timed out, recalling again...")
-        network.SendPingMessage(me, contact, done)
+        fmt.Println("SendPingMessage timed out", iter, ", recalling again...")
+        network.SendPingMessage(me, contact, done, iter+1)
         return
     }
   }(network, me, contact, done)
@@ -106,9 +116,23 @@ func (network *Network) SendPingMessage(me *Contact, contact *Contact, done chan
   conn.Close()
 }
 
-func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, target *Contact, done chan []Contact) {
+func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, target *Contact, done chan []Contact, iteration ... int) {
+  p :=  make([]byte, 8096)
+
   var errorRes []Contact
-  p :=  make([]byte, 2048)
+
+  var iter int
+  if iteration == nil {
+    iter = 0
+  } else {
+    iter = iteration[0]
+  }
+  if(iter >= 5) {
+    fmt.Println("Too many tries in SendFindContactMessage...")
+    done<-errorRes
+    return
+  }
+
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error SFCM 1 %v", err)
@@ -132,8 +156,8 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
         break
       case <-time.After(2 * time.Second):
         conn.Close()
-        fmt.Println("SendFindContactMessage timed out, recalling again...")
-        network.SendFindContactMessage(me, contact, target, done)
+        fmt.Println("SendFindContactMessage timed out", iter, ", recalling again...")
+        network.SendFindContactMessage(me, contact, target, done, iter+1)
         return
     }
   }(network, me, contact, target, done)
@@ -159,9 +183,23 @@ func (network *Network) SendFindContactMessage(me *Contact, contact *Contact, ta
   conn.Close()
 }
 
-func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filename string, done chan []byte) {
+func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filename string, done chan []byte, iteration ... int) {
+  p :=  make([]byte, 8096)
+
   var errorRes []byte
-  p :=  make([]byte, 2048)
+
+  var iter int
+  if iteration == nil {
+    iter = 0
+  } else {
+    iter = iteration[0]
+  }
+  if(iter >= 5) {
+    fmt.Println("Too many tries in SendFindDataMessage...")
+    done<-errorRes
+    return
+  }
+
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
@@ -181,8 +219,8 @@ func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filen
         break
       case <-time.After(2 * time.Second):
         conn.Close()
-        fmt.Println("SendFindDataMessage timed out, recalling again...")
-        network.SendFindDataMessage(me, contact, filename, done)
+        fmt.Println("SendFindDataMessage timed out", iter, ", recalling again...")
+        network.SendFindDataMessage(me, contact, filename, done, iter+1)
         return
     }
   }(network, me, contact, filename, done)
@@ -201,11 +239,26 @@ func (network *Network) SendFindDataMessage(me *Contact, contact *Contact, filen
   conn.Close()
 }
 
-func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename string, data []byte, done chan string) {
-  p :=  make([]byte, 2048)
+func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename string, data []byte, done chan string, iteration ... int) {
+  p :=  make([]byte, 8096)
+
+  var errorRes string
+
+  var iter int
+  if iteration == nil {
+    iter = 0
+  } else {
+    iter = iteration[0]
+  }
+  if(iter >= 5) {
+    fmt.Println("Too many tries in SendStoreMessage...")
+    done<-errorRes
+    return
+  }
+
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
-    fmt.Printf("Some error %v", err)
+    fmt.Printf("Some error SendStoreMessage %v", err)
     done <- "fail"
     return
   }
@@ -222,8 +275,8 @@ func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename
         break
       case <-time.After(2 * time.Second):
         conn.Close()
-        fmt.Println("SendStoreMessage timed out, recalling again...")
-        network.SendStoreMessage(me, contact, filename, data, done)
+        fmt.Println("SendStoreMessage timed out", iter, ", recalling again...")
+        network.SendStoreMessage(me, contact, filename, data, done, iter+1)
         return
     }
   }(network, me, contact, filename, data, done)
@@ -236,15 +289,29 @@ func (network *Network) SendStoreMessage(me *Contact, contact *Contact, filename
     in := unpackMessage(string(p[:n]))
     done <- in.Data
   } else {
-    fmt.Printf("Some error %v\n", err)
+    fmt.Printf("Some error Unpacking %v\n", err)
     done <- "fail"
   }
   conn.Close()
 }
 
-func (network *Network) SendPinMessage(me *Contact, contact *Contact, filename string, done chan bool) {
+func (network *Network) SendPinMessage(me *Contact, contact *Contact, filename string, done chan bool, iteration ... int) {
+  p :=  make([]byte, 8096)
+
   var errorRes bool
-  p :=  make([]byte, 2048)
+
+  var iter int
+  if iteration == nil {
+    iter = 0
+  } else {
+    iter = iteration[0]
+  }
+  if(iter >= 5) {
+    fmt.Println("Too many tries in SendPinMessage...")
+    done<-errorRes
+    return
+  }
+
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
@@ -264,8 +331,8 @@ func (network *Network) SendPinMessage(me *Contact, contact *Contact, filename s
         break
       case <-time.After(2 * time.Second):
         conn.Close()
-        fmt.Println("SendPinMessage timed out, recalling again...")
-        network.SendPinMessage(me, contact, filename, done)
+        fmt.Println("SendPinMessage timed out", iter, ", recalling again...")
+        network.SendPinMessage(me, contact, filename, done, iter+1)
         return
     }
   }(network, me, contact, filename, done)
@@ -288,9 +355,23 @@ func (network *Network) SendPinMessage(me *Contact, contact *Contact, filename s
   conn.Close()
 }
 
-func (network *Network) SendUnpinMessage(me *Contact, contact *Contact, filename string, done chan bool) {
+func (network *Network) SendUnpinMessage(me *Contact, contact *Contact, filename string, done chan bool, iteration ... int) {
+  p :=  make([]byte, 8096)
+
   var errorRes bool
-  p :=  make([]byte, 2048)
+
+  var iter int
+  if iteration == nil {
+    iter = 0
+  } else {
+    iter = iteration[0]
+  }
+  if(iter >= 5) {
+    fmt.Println("Too many tries in SendUnpinMessage...")
+    done<-errorRes
+    return
+  }
+
   conn, err := net.Dial("udp", contact.Address)
   if err != nil {
     fmt.Printf("Some error %v", err)
@@ -310,8 +391,8 @@ func (network *Network) SendUnpinMessage(me *Contact, contact *Contact, filename
         break
       case <-time.After(2 * time.Second):
         conn.Close()
-        fmt.Println("SendUnpinMessage timed out, recalling again...")
-        network.SendUnpinMessage(me, contact, filename, done)
+        fmt.Println("SendUnpinMessage timed out", iter, ", recalling again...")
+        network.SendUnpinMessage(me, contact, filename, done, iter+1)
         return
     }
   }(network, me, contact, filename, done)
@@ -358,7 +439,9 @@ func unpackMessage(message string) Message {
   var raw Message //map[string]interface{}
   err := json.Unmarshal(in, &raw)
   if err != nil {
-    fmt.Println(err)
+    fmt.Printf("UnpackMessage: %v\n", err)
+    fmt.Println(in)
+    fmt.Println(string(in))
   }
   return raw
 }

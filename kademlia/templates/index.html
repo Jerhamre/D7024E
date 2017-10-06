@@ -44,14 +44,12 @@
       <tr>
         <th>Filename</th>
         <th>Data</th>
-        <th>Pinned</th>
       </tr>
 
       {{range .Files}}
         <tr>
           <td>{{ .Filename }}</td>
           <td>{{ .Data }}</td>
-          <td>{{ .Pinned }}</td>
         </tr>
       {{end}}
     </table>

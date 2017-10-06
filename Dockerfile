@@ -1,9 +1,8 @@
-FROM golang
+FROM golang:alpine
 
 ADD . /go/src/d7024e
 ADD ./kademlia /go/bin/kademlia
 
-RUN go get github.com/ccding/go-stun
 RUN go install d7024e
 
 

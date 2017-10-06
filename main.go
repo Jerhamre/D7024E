@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"d7024e/kademlia"
-	//"github.com/ccding/go-stun/stun"
   "time"
 	"os"
 )
@@ -15,9 +14,6 @@ func main() {
 	ip := "172.17.0.1"
 	if port == "" {
 		port = args[0]
-		// Use STUN to get external IP address
-		//_, host, _ := stun.NewClient().Discover()
-		//ip = host.IP()
 		ip = "localhost"
 	}
 
@@ -32,7 +28,7 @@ func main() {
 	dfs := kademlia.NewDFS(rt, 10000)
 
 	network := kademlia.Network{ip, port}
-	queue := kademlia.Queue{make(chan kademlia.Contact), rt, 10}
+	queue := kademlia.Queue{make(chan kademlia.Contact, 10000), rt, 10}
 	go queue.Run()
 
 	k := kademlia.Kademlia{rt, &network, &queue, &dfs}
@@ -54,7 +50,15 @@ func main() {
 		fmt.Println("First contact is: "+c.String())
 		queue.Enqueue(c)
 
+	  time.Sleep(time.Second * 1)
+
 		k.LookupContact(&me)
+
+		if port == "8001" {
+			done2 := make(chan string)
+			dfs.Store("qweqwe", []byte("content DLC"), done2)
+			fmt.Println(<-done2)
+		}
 	}
 
 	fmt.Println("Ready for use!")
