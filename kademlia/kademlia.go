@@ -50,7 +50,14 @@ func (kademlia *Kademlia) LookupData(hash string, done chan []byte) {
 		return
 	}
 	fmt.Println("file not found on local, contacting cluster")
-	returned_contacts := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(kademliaID, k)}
+	var returned_contacts ContactCandidates
+	temp := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(target.ID, k)}
+
+	for _, contact := range temp.contacts {
+		contact.CalcDistance(target.ID)
+		seen[contact.ID.String()] = struct{}{}
+		returned_contacts.contacts = append(returned_contacts.contacts, contact)
+	}
 
 
 	//fmt.Println("Searching in cluster for: ",kademliaID)
@@ -135,9 +142,14 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
   goDone := 0
 	seen[kademlia.RoutingTable.me.ID.String()] = struct{}{}
 
-	returned_contacts := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(target.ID, k)}
-	for _, contact := range returned_contacts.contacts {
+	var returned_contacts ContactCandidates
+	temp := ContactCandidates{kademlia.RoutingTable.FindClosestContacts(target.ID, k)}
+
+
+	for _, contact := range temp.contacts {
+		contact.CalcDistance(target.ID)
 		seen[contact.ID.String()] = struct{}{}
+		returned_contacts.contacts = append(returned_contacts.contacts, contact)
 	}
 	noMoreQueable := false
 	for {
@@ -149,7 +161,7 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
 			// only add a contact if it has not been added before
 			for _, node := range temp {
 				if _, ok := seen[node.ID.String()]; !ok{
-						node.CalcDistance(kademlia.RoutingTable.me.ID)
+						node.CalcDistance(target.ID)
 						returned_contacts.contacts = append(returned_contacts.contacts, node)
 						fmt.Println("Adding node to returned_contacts: ", node)
 						seen[node.ID.String()] = struct{}{}
@@ -161,6 +173,7 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
 			if goDone == k{
 				fmt.Println("FindClosestInCluster terminated")
 				//fmt.Println("returned_contacts",returned_contacts.contacts)
+				returned_contacts.Sort()
 				return returned_contacts.contacts
 			}
 		}
@@ -183,6 +196,7 @@ func (kademlia *Kademlia) FindClosestInCluster(target *Contact) []Contact{
 			}
 			if active == 0{
 				//fmt.Println("FindClosestInCluster terminated")
+				returned_contacts.Sort()
 				return returned_contacts.contacts
 			}
 		}
