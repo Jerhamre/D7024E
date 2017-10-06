@@ -100,7 +100,13 @@ func (dfs *DFS) PurgeFile(filename string) {
 			fmt.Printf("Send file to %v contacts\n", len(contacts))
 			fmt.Println(contacts)
 
-			for _, c := range contacts[:20] {
+			cut := 20
+
+			if len(contacts) < cut {
+				cut = len(contacts)
+			}
+
+			for _, c := range contacts[:cut] {
 				doneStore := make(chan string)
 				go dfs.Kademlia.Network.SendStoreMessage(&dfs.Kademlia.RoutingTable.me,
 					&c, filename, data, doneStore)
