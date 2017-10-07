@@ -1,9 +1,5 @@
 package kademlia
 
-import (
-	"fmt"
-)
-
 const bucketSize = 20
 
 type RoutingTable struct {
@@ -67,6 +63,5 @@ func (routingTable *RoutingTable) GetBucketIndex(id *KademliaID) int {
 }
 
 func (routingTable *RoutingTable) GetBucketForID(id *KademliaID) *bucket {
-	fmt.Printf("bucket index %v\n", routingTable.GetBucketIndex(id))
 	return routingTable.buckets[routingTable.GetBucketIndex(id)]
 }

@@ -15,7 +15,11 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 	returned_contacts := kademlia.FindClosestInCluster(target)
 
 	for _, contact := range returned_contacts {
-		kademlia.Queue.Enqueue(contact)
+		done := make(chan *KademliaID)
+		go kademlia.Network.SendPingMessage(&kademlia.RoutingTable.me, &contact, done)
+		if <-done != nil {
+			kademlia.Queue.Enqueue(contact)
+		}
 	}
 }
 
