@@ -6,6 +6,7 @@ import (
   "io/ioutil"
   "strings"
 	"bytes"
+	"time"
 )
 
 func TestHTTPIndex(t *testing.T) {
@@ -16,8 +17,9 @@ func TestHTTPIndex(t *testing.T) {
   dfs := NewDFS(rt, 10000)
   network := Network{"localhost", "9000"}
   queue := Queue{make(chan Contact), rt, 10}
-  go queue.Run()
   k := Kademlia{rt, &network, &queue, &dfs}
+  go queue.Run()
+	dfs.InitDFS(k)
   go HTTPListen("9000", &k, "templates")
 
   resp, err := http.Get("http://localhost:9000")
@@ -82,6 +84,9 @@ func TestHTTPCat(t *testing.T) {
 		t.Fatalf("Expected Store %v but got %v", filename, string(body))
 	}
 
+
+	time.Sleep(time.Millisecond * 20)
+
 	url2 := "http://localhost:9000/cat?Filename="+filename
 
 	req2, err2 := http.NewRequest("GET", url2, nil)
@@ -93,13 +98,13 @@ func TestHTTPCat(t *testing.T) {
 	}
 	defer resp2.Body.Close()
 
-
 	body2, _ := ioutil.ReadAll(resp2.Body)
 
 	if(string(body2) != string(data)) {
 		t.Fatalf("Expected Cat %v but got %v", string(data), string(body2))
 	}
 }
+
 
 func TestHTTPPin(t *testing.T) {
 
@@ -146,6 +151,8 @@ func TestHTTPPin(t *testing.T) {
 		t.Fatalf("Expected Pin %v but got %v", "true", string(body2))
 	}
 }
+
+
 
 func TestHTTPUnpin(t *testing.T) {
 	url := "http://localhost:9000/store"

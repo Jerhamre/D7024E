@@ -2,6 +2,7 @@ package kademlia
 
 import (
 	"testing"
+	"time"
 )
 
 func TestSendPingMessage(t *testing.T) {
@@ -38,40 +39,14 @@ func TestSendFindContactMessage(t *testing.T) {
   }
 }
 
-func TestSendFindDataMessage(t *testing.T) {
+func TestSendStoreMessage(t *testing.T) {
 	port1 := "8004"
 	port2 := "8005"
 	k := HelperNetworkListen(port1, port2)
 	c := NewContact(NewRandomKademliaID(), "localhost:"+port2)
 
 	filename := "test"
-	data := []byte("file content")
-
-	done := make(chan string)
-	go k.Network.SendStoreMessage(&k.RoutingTable.me, &c, filename, data, done)
-	ret := <- done
-
-	if(ret != filename) {
-    t.Fatalf("Expected Store %v but got %v", filename, ret)
-  }
-
-	done2 := make(chan []byte)
-	go k.Network.SendFindDataMessage(&k.RoutingTable.me, &c, filename, done2)
-	ret2 := <- done2
-
-	if(!testEq(ret2, data)) {
-    t.Fatalf("Expected Find %v but got %v", data, ret2)
-  }
-}
-
-func TestSendStoreMessage(t *testing.T) {
-	port1 := "8006"
-	port2 := "8007"
-	k := HelperNetworkListen(port1, port2)
-	c := NewContact(NewRandomKademliaID(), "localhost:"+port2)
-
-	filename := "test"
-	data := []byte("file content")
+	data := []byte("file content555")
 
 	done := make(chan string)
 	go k.Network.SendStoreMessage(&k.RoutingTable.me, &c, filename, data, done)
@@ -79,6 +54,34 @@ func TestSendStoreMessage(t *testing.T) {
 
 	if(ret != filename) {
     t.Fatalf("Expected %v but got %v", filename, ret)
+  }
+}
+
+func TestSendFindDataMessage(t *testing.T) {
+	port1 := "8006"
+	port2 := "8007"
+	k := HelperNetworkListen(port1, port2)
+	c := NewContact(NewRandomKademliaID(), "localhost:"+port2)
+
+	filename := "test"
+	data := []byte("file content666")
+
+	done := make(chan string)
+	go k.Network.SendStoreMessage(&k.RoutingTable.me, &c, filename, data, done)
+	ret := <- done
+
+	time.Sleep(time.Millisecond * 30)
+
+	if(ret != filename) {
+    t.Fatalf("Expected Store %v but got %v", filename, ret)
+  }
+
+	done2 := make(chan []byte)
+	go k.Network.SendFindDataMessage(&k.RoutingTable.me, &c, filename, done2)
+	ret2 := <-done2
+
+	if(!testEq(ret2, data)) {
+    t.Fatalf("Expected Find %v but got %v", string(data), string(ret2))
   }
 }
 
@@ -154,8 +157,9 @@ func HelperNetworkListen(port1 string, port2 string) *Kademlia{
   dfs1 := NewDFS(rt1, 10000)
   network1 := Network{"localhost", port1}
   queue1 := Queue{make(chan Contact), rt1, 10}
-  go queue1.Run()
   k1 := Kademlia{rt1, &network1, &queue1, &dfs1}
+  go queue1.Run()
+	dfs1.InitDFS(k1)
 	go Listen(&k1)
 
 	kID2 := NewHashKademliaID("localhost:"+port2)
@@ -165,9 +169,13 @@ func HelperNetworkListen(port1 string, port2 string) *Kademlia{
   dfs2 := NewDFS(rt2, 10000)
   network2 := Network{"localhost", port2}
   queue2 := Queue{make(chan Contact), rt2, 10}
-  go queue2.Run()
   k2 := Kademlia{rt2, &network2, &queue2, &dfs2}
+  go queue2.Run()
+	dfs2.InitDFS(k2)
 	go Listen(&k2)
+
+
+	time.Sleep(time.Millisecond * 25)
 
 	return &k1
 }

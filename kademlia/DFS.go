@@ -50,7 +50,7 @@ func (dfs *DFS) InitDFS(kademlia Kademlia) {
 				case f, ok := <- dfs.Waiting:
 			  	if ok {
 						if _,ok := dfs.Files[f.Filename]; !ok {
-							fmt.Printf("Writing %v to storage\n", f.Filename)
+							fmt.Println("Store add", string(f.Data))
 							dfs.Files[f.Filename] = f
 							go dfs.PurgeFile(f.Filename)
 						}
@@ -72,7 +72,7 @@ func (dfs *DFS) Cat(filename string, done chan []byte) {
 }
 
 func (dfs *DFS) Store(filename string, data []byte, done chan string) {
-	// Lock so only one goroutine at a time can write.
+	fmt.Println("Store", string(data))
 	dfs.Waiting <- File{filename, data, make(chan bool)}
 	done<-filename
 }
@@ -90,10 +90,11 @@ func (dfs *DFS) Unpin(filename string, done chan bool) {
 func (dfs *DFS) PurgeFile(filename string) {
 	select {
 	case <-dfs.Files[filename].Pinned:
-			break
+		break
 	case <-time.After(time.Duration(dfs.PurgeTimer) * time.Millisecond):
 
 		val, ok := dfs.Files[filename]
+
 		if ok {
 			data := val.Data
 			delete(dfs.Files, filename)
@@ -114,8 +115,6 @@ func (dfs *DFS) PurgeFile(filename string) {
 				<-doneStore
 			}
 		}
-
-		dfs.Files[filename].Pinned<-false
 	}
 }
 

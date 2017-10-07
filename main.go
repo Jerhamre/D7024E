@@ -51,7 +51,7 @@ func main() {
 		fmt.Println("First contact is: "+c.String())
 		queue.Enqueue(c)
 
-	  time.Sleep(time.Millisecond * 300)
+		time.Sleep(time.Millisecond * 300)
 	}
 
 	fmt.Println("Ready for use!")

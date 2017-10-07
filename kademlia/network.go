@@ -488,7 +488,6 @@ func handleRequest(conn *net.UDPConn, buf []byte, remoteaddr *net.UDPAddr, kadem
 
       done := make(chan string)
       go kademlia.DFS.Store(filename, []byte(content), done)
-
       data = <-done
     case "SendPinMessage":
       hash := in.Data

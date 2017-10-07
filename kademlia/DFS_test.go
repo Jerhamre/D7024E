@@ -42,6 +42,8 @@ func TestStore(t *testing.T) {
   go dfs.Store(filename, data, done)
   back := <-done
 
+	time.Sleep(time.Millisecond * 30)
+
   if(filename != back) {
     t.Fatalf("Expected filenames %v but got %v", filename, back)
   }
@@ -71,6 +73,8 @@ func TestCat(t *testing.T) {
   go dfs.Store(filename, data, store)
   <-store
 
+	time.Sleep(time.Millisecond * 30)
+
   done := make(chan []byte)
   go dfs.Cat(filename, done)
   back := <-done
@@ -86,7 +90,7 @@ func TestPin(t *testing.T) {
   me := NewContact(kID, "localhost:8000")
   me.CalcDistance(kID)
   rt := NewRoutingTable(me)
-  dfs := NewDFS(rt, 25)
+  dfs := NewDFS(rt, 40)
   network := Network{"localhost", "8000"}
   queue := Queue{make(chan Contact), rt, 10}
   go queue.Run()
@@ -100,7 +104,7 @@ func TestPin(t *testing.T) {
   go dfs.Store(filename, data, store)
   <-store
 
-  time.Sleep(time.Millisecond * 10)
+  time.Sleep(time.Millisecond * 20)
 
   done := make(chan bool)
   go dfs.Pin(filename, done)
@@ -110,14 +114,14 @@ func TestPin(t *testing.T) {
     t.Fatalf("Expected true back from Pin %v but got %v", true, b)
   }
 
-  time.Sleep(time.Millisecond * 25)
+  time.Sleep(time.Millisecond * 50)
 
 	cat := make(chan []byte)
   go dfs.Cat(filename, cat)
   back := <-cat
 
 	if(!testEq(back, data)) {
-    t.Fatalf("Expected file data %v but got %v", data, back)
+    t.Fatalf("Expected file data %v but got %v", string(data), string(back))
   }
 }
 
@@ -127,7 +131,7 @@ func TestUnpin(t *testing.T) {
   me := NewContact(kID, "localhost:8000")
   me.CalcDistance(kID)
   rt := NewRoutingTable(me)
-  dfs := NewDFS(rt, 25)
+  dfs := NewDFS(rt, 40)
   network := Network{"localhost", "8000"}
   queue := Queue{make(chan Contact), rt, 10}
   go queue.Run()
@@ -141,7 +145,7 @@ func TestUnpin(t *testing.T) {
   go dfs.Store(filename, data, store)
   <-store
 
-  time.Sleep(time.Millisecond * 10)
+  time.Sleep(time.Millisecond * 20)
 
   done := make(chan bool)
   go dfs.Pin(filename, done)
@@ -151,7 +155,9 @@ func TestUnpin(t *testing.T) {
     t.Fatalf("Expected true back from Pin %v but got %v", true, b)
   }
 
-  done2 := make(chan bool)
+	time.Sleep(time.Millisecond * 10)
+
+	done2 := make(chan bool)
   go dfs.Unpin(filename, done2)
   b2 := <-done2
 
@@ -159,14 +165,17 @@ func TestUnpin(t *testing.T) {
     t.Fatalf("Expected true back from Unpin %v but got %v", true, b2)
   }
 
-  time.Sleep(time.Millisecond * 35)
+  time.Sleep(time.Millisecond * 55)
+
+	expectedResult := []byte("CatFileDoesntExists")
 
 	cat := make(chan []byte)
 	go dfs.Cat(filename, cat)
 	back := <-cat
 
-	if(back != nil) {
-		t.Fatalf("Expected file data %v but got %v", nil, back)
+
+	if(!testEq(back, expectedResult)) {
+		t.Fatalf("Expected file data %v but got %v", string(expectedResult), back)
 	}
 }
 
@@ -192,12 +201,15 @@ func TestPurge(t *testing.T) {
 
   time.Sleep(time.Millisecond * 50)
 
+	expectedResult := []byte("CatFileDoesntExists")
+
 	cat := make(chan []byte)
 	go dfs.Cat(filename, cat)
 	back := <-cat
 
-	if(back != nil) {
-		t.Fatalf("Expected file data %v but got %v", nil, back)
+
+	if(!testEq(back, expectedResult)) {
+		t.Fatalf("Expected file data %v but got %v", string(expectedResult), back)
 	}
 }
 
@@ -207,7 +219,7 @@ func TestStopPurge(t *testing.T) {
   me := NewContact(kID, "localhost:8000")
   me.CalcDistance(kID)
   rt := NewRoutingTable(me)
-  dfs := NewDFS(rt, 25)
+  dfs := NewDFS(rt, 40)
   network := Network{"localhost", "8000"}
   queue := Queue{make(chan Contact), rt, 10}
   go queue.Run()
@@ -221,7 +233,7 @@ func TestStopPurge(t *testing.T) {
   go dfs.Store(filename, data, store)
   <-store
 
-  time.Sleep(time.Millisecond * 10)
+  time.Sleep(time.Millisecond * 20)
 
   go dfs.StopPurge(filename)
 
@@ -232,7 +244,7 @@ func TestStopPurge(t *testing.T) {
 	back := <-cat
 
 	if(!testEq(back, data)) {
-		t.Fatalf("Expected file data %v but got %v", data, back)
+		t.Fatalf("Expected file data %v but got %v", string(data), string(back))
 	}
 }
 func TestGetFiles(t *testing.T) {
@@ -254,6 +266,8 @@ func TestGetFiles(t *testing.T) {
   done := make(chan string)
   go dfs.Store(filename, data, done)
   <-done
+
+  time.Sleep(time.Millisecond * 30)
 
   files := dfs.GetFiles()
 

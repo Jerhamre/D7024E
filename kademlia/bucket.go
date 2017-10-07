@@ -1,9 +1,5 @@
 package kademlia
 
-import (
-	"fmt"
-)
-
 type bucket struct {
 	list []Contact
 }
@@ -31,7 +27,6 @@ func (bucket *bucket) AddContact(contact Contact) {
 
 func contains(s []Contact, e Contact) int {
   for i, a := range s {
-		fmt.Println(e.String())
     if a.ID.String() == e.ID.String() {
       return i
     }
@@ -45,7 +40,7 @@ func (bucket *bucket) GetContactAndCalcDistance(target *KademliaID) []Contact {
 		c.CalcDistance(target)
 		contacts = append(contacts, c)
 	}
-	
+
 	return contacts
 }
 
